@@ -1,0 +1,23 @@
+{
+  "name": "@sleeve\\webapp-node-azure",
+  "version": "1.0.0",
+  "description": "Creates a sample project with Sleeve configuration for a node Web App in Azure",
+  "main": "webapp-node-azure.js",
+  "types": "webapp-node-azure.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",    
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Microsoft",
+    "Azure",
+    "ARM",
+    "Sleeve",
+    "Web",
+    "App",
+    "Node"
+  ],
+  "author": "Yaron Y. Goland <yarong@microsoft.com> (http://www.goland.org/)",
+  "license": "MIT"
+}

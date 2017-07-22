@@ -1,0 +1,20 @@
+{
+  "name": "@sleeve\\cli",
+  "version": "1.0.0",
+  "description": "Command Line Interface for Sleeve",
+  "main": "cli.js",
+  "types": "cli.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Microsoft",
+    "Azure",
+    "ARM",
+    "Sleeve"
+  ],
+  "author": "Yaron Y. Goland <yarong@microsoft.com> (http://www.goland.org/)",
+  "license": "MIT"
+}

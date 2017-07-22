@@ -1,0 +1,14 @@
+{
+  "name": "@sleeve/common-utilities",
+  "version": "1.0.0",
+  "description": "Common code for Sleeve packages",
+  "main": "common-utilities.js",
+  "types": "common-utilities.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Yaron Y. Goland <yarong@microsoft.com> (http://www.goland.org/)",
+  "license": "MIT"
+}

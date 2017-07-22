@@ -2,9 +2,11 @@
     "compilerOptions": {
         "target": "es6",
         "module": "commonjs",
+        "moduleResolution": "node",
         "sourceMap": true,
         "watch": true,
-        "strictNullChecks": true
+        "declaration": true,
+        "strict": true
     },
     "compileOnSave": true
 }

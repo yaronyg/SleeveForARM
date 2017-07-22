@@ -1,0 +1,23 @@
+{
+  "name": "@sleeve\\resourcegroup-azure",
+  "version": "1.0.0",
+  "description": "Create a manager for resource groups in Sleeve for ARM",
+  "dependencies": {
+    "@sleeve/common-utilities": "1.0.0"
+  },
+  "main": "resourcegroup.js",
+  "types": "resourcegroup.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",    
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Azure",
+    "Microsoft",
+    "ARM",
+    "Sleeve"
+  ],
+  "author": "Yaron Y. Goland <yarong@microsoft.com> (http://www.goland.org/)",
+  "license": "MIT"
+}
