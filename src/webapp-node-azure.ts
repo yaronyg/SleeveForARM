@@ -133,10 +133,11 @@ export default class WebappNodeAzure extends Resource {
             filter: (src) => (src === "node_modules" || src === ".sleeve")
         });
 
-        await runExecFailOnStderr("git add -A");
+        await childProcess.exec("git add -A", { cwd: gitCloneDepotPath} );
 
-        await runExecFailOnStderr("git commit -am \"Prep for release\"");
+        await childProcess.exec("git commit -am \"Prep for release\"",
+                                    { cwd: gitCloneDepotPath});
 
-        await runExecFailOnStderr("git push");
+        await childProcess.exec("git push", { cwd: gitCloneDepotPath });
     }
 }
