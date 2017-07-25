@@ -10,11 +10,16 @@ export enum azCommandOutputs {
 }
 
 export async function runExecFailOnStderr(command: string) {
-    const commandResult = await exec(command);
-    if (commandResult.stderr) {
-        throw new Error(commandResult.stderr);
+    try {
+        const commandResult = await exec(command);
+        if (commandResult.stderr) {
+            throw new Error(commandResult.stderr);
+        }
+        return commandResult.stdout;
+    } catch (err) {
+        throw new Error(format("Command %s failed with error %j",
+                        command, err));
     }
-    return commandResult.stdout;
 }
 
 export async function runAzCommand(command: string,
