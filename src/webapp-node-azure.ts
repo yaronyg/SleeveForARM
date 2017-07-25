@@ -1,9 +1,12 @@
-import { runAzCommand } from "./common-utilities";
+import * as childProcess from "child_process";
+import { randomBytes } from "crypto";
+import * as fs from "fs-extra-promise";
+import * as path from "path";
+import { format } from "util";
+import { addPasswordToGitURL, azCommandOutputs, runAzCommand,
+        runExecFailOnStderr } from "./common-utilities";
 import Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
-import path = require("path");
-import { randomBytes } from "crypto";
-import { format } from "util";
 
 export default class WebappNodeAzure extends Resource {
     private static findDefaultResourceGroup(resources: Resource[])
@@ -34,12 +37,23 @@ export default class WebappNodeAzure extends Resource {
 
     private webAppServicePlanNameProperty: string;
 
+    private webAppDNSNameProperty: string;
+
     public get webAppServicePlanName() {
         return this.webAppServicePlanNameProperty;
     }
 
     public setWebAppServicePlanName(name: string): WebappNodeAzure {
         this.webAppServicePlanNameProperty = name;
+        return this;
+    }
+
+    public get webAppDNSName() {
+        return this.webAppDNSNameProperty;
+    }
+
+    public setWebAppServiceDNSName(name: string): WebappNodeAzure {
+        this.webAppDNSNameProperty = name;
         return this;
     }
 
@@ -63,14 +77,63 @@ export default class WebappNodeAzure extends Resource {
         if (this.webAppServicePlanName === undefined) {
             this.setWebAppServicePlanName(
                 this.resourceGroup.resourceGroupName +
-                    path.basename(__dirname));
+                    path.basename(directoryPath) + "webAppPlan");
         }
 
-        const result = await runAzCommand(
+        await runAzCommand(
             format("az appservice plan create --name \"%s\" \
                     --resource-group \"%s\" --sku FREE",
                     this.webAppServicePlanName,
-                    this.resourceGroup.resourceGroupName),
-        );
+                    this.resourceGroup.resourceGroupName));
+
+        if (this.webAppDNSNameProperty === undefined) {
+            this.setWebAppServiceDNSName(
+                this.resourceGroup.resourceGroupName +
+                    path.basename(directoryPath) + "webapp");
+        }
+
+        await runAzCommand(
+            format("az webapp create --name \"%s\" \
+                    --resource-group \"%s\" --plan \"%s\"",
+                this.webAppDNSName,
+                this.resourceGroup.resourceGroupName,
+                this.webAppServicePlanName));
+
+        await this.deployToWebApp(directoryPath, password);
+    }
+
+    public async setup(directoryPath: string) {
+        fs.copyAsync("../assets/webapp-node-azure", directoryPath);
+    }
+
+    private async deployToWebApp(directoryPath: string, password: string) {
+        const webAppGitURLResult =
+            await runAzCommand(
+                format("az webapp deployment source config-local-git \
+                        --name \"%s\" --resource-group \"%s\" \
+                        --query url --output tsv", this.webAppDNSName,
+                        this.resourceGroup.resourceGroupName),
+                    azCommandOutputs.string);
+
+        const gitCloneDepotParentPath = path.join(directoryPath, ".sleeve");
+
+        const gitCloneDepotPath = path.join(gitCloneDepotParentPath,
+                                            this.webAppDNSName);
+
+        await fs.ensureDirAsync(gitCloneDepotParentPath);
+
+        const gitURLWithPassword = addPasswordToGitURL(webAppGitURLResult,
+                                                        password);
+
+        await childProcess.exec(format("git clone %s", gitURLWithPassword),
+                                { cwd: gitCloneDepotParentPath });
+
+        await fs.copyAsync(directoryPath, gitCloneDepotPath, {
+            filter: (src) => (src === "node_modules" || src === ".sleeve")
+        });
+
+        await runExecFailOnStderr("git commit -am \"Prep for release\"");
+
+        await runExecFailOnStderr("git push");
     }
 }

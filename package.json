@@ -1,6 +1,7 @@
 {
   "name": "sleeveforarm",
   "version": "0.0.0",
+  "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {
     "build": "tsc --watch false",
@@ -24,10 +25,12 @@
   },
   "homepage": "https://github.com/yaronyg/SleeveForARM#readme",
   "dependencies": {
+    "fs-extra-promise": "^1.0.1",
     "typescript": "^2.4.1"
   },
   "devDependencies": {
     "@types/chai": "^4.0.1",
+    "@types/fs-extra-promise": "^1.0.2",
     "@types/mocha": "^2.2.41",
     "@types/node": "^8.0.14",
     "chai": "^4.1.0",
