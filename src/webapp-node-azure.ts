@@ -103,7 +103,8 @@ export default class WebappNodeAzure extends Resource {
     }
 
     public async setup(directoryPath: string) {
-        fs.copyAsync("../assets/webapp-node-azure", directoryPath);
+        fs.copyAsync(path.join(__dirname, "../assets/webapp-node-azure"),
+                        directoryPath);
     }
 
     private async deployToWebApp(directoryPath: string, password: string) {
