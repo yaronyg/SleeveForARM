@@ -1,8 +1,10 @@
 import path = require("path");
 import { format, promisify } from "util";
-import commonUtilities = require("@sleeve/common-utilities");
-import Resource from "@sleeve/common-utilities/resource";
+import commonUtilities = require("./common-utilities");
+import Resource from "./resource";
 import fs = require("fs");
+
+const asyncFsStat = promisify(fs.stat);
 
 interface IGroupCreateResult {
     properties: {
@@ -64,6 +66,25 @@ export default class ResourceGroup extends Resource {
         if (groupCreateResult.properties.provisioningState !== "Succeeded") {
             throw new Error(
                 format("Provisioning failed with %j", groupCreateResult));
+        }
+    }
+
+    public async setup(directoryToSetUp: string) {
+        /**
+         * We need to go to the specified directory
+         * and create the sleeve.js file and put inside of it
+         * a call to new resourcegroup();
+         */
+        if (!fs.existsSync(directoryToSetUp)) {
+            throw new Error("Specified path does not exist: " +
+                            directoryToSetUp);
+        }
+
+        const statResults = await asyncFsStat(directoryToSetUp);
+
+        if (!statResults.isDirectory()) {
+            throw new Error("Specified path is not a directory - " +
+                            directoryToSetUp);
         }
     }
 }

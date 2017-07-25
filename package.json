@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "description": "Making Azure Easy",
   "scripts": {
-    "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc --watch false",
+    "test": "mocha test/*.js"
   },
   "repository": {
     "type": "git",
@@ -27,7 +27,11 @@
     "typescript": "^2.4.1"
   },
   "devDependencies": {
+    "@types/chai": "^4.0.1",
+    "@types/mocha": "^2.2.41",
     "@types/node": "^8.0.14",
+    "chai": "^4.1.0",
+    "mocha": "^3.4.2",
     "tslint": "^5.5.0"
   }
 }

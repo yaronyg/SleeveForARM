@@ -1,6 +1,6 @@
-import { runAzCommand } from "@sleeve/common-utilities";
-import Resource from "@sleeve/common-utilities/resource";
-import ResourceGroup from "@sleeve/resourcegroup-azure";
+import { runAzCommand } from "./common-utilities";
+import Resource from "./resource";
+import ResourceGroup from "./resourcegroup";
 import path = require("path");
 import { randomBytes } from "crypto";
 import { format } from "util";

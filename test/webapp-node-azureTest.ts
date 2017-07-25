@@ -1,10 +1,10 @@
 // import { expect } from "chai";
-import ResourceGroup from "@sleeve/resourcegroup-azure";
+import ResourceGroup from "../src/resourcegroup";
 import WebappNodeAzure from "../src/webapp-node-azure";
 
 describe("Web app Node Azure", () => {
-    it("should be deployable2", async function() {
-        this.timeout(30000);
+    it("should be deployable", async function() {
+        this.timeout(1 * 60 * 1000);
         const webappNode = new WebappNodeAzure();
         const resourceGroup = new ResourceGroup();
         await resourceGroup.deployResource("ick3", []);
