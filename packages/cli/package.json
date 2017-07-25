@@ -1,5 +1,5 @@
 {
-  "name": "@sleeve\\cli",
+  "name": "@sleeve/cli",
   "version": "1.0.0",
   "description": "Command Line Interface for Sleeve",
   "main": "cli.js",

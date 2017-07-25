@@ -1,16 +1,22 @@
 {
-  "name": "@sleeve\\resourcegroup-azure",
+  "name": "@sleeve/resourcegroup-azure",
   "version": "1.0.0",
   "description": "Create a manager for resource groups in Sleeve for ARM",
+  "main": "src/resourcegroup.js",
+  "types": "src/resourcegroup.d.ts",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "test": "mocha test/*.js"
+  },  
   "dependencies": {
     "@sleeve/common-utilities": "1.0.0"
   },
-  "main": "resourcegroup.js",
-  "types": "resourcegroup.d.ts",
-  "scripts": {
-    "prepublish": "npm run build",
-    "build": "tsc",    
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "devDependencies": {
+    "@types/chai": "^4.0.1",
+    "@types/mocha": "^2.2.41",
+    "chai": "^4.1.0",
+    "mocha": "^3.4.2"
   },
   "keywords": [
     "Azure",

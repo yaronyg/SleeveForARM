@@ -1,22 +1,32 @@
 {
-  "name": "@sleeve\\webapp-node-azure",
+  "name": "@sleeve/webapp-node-azure",
   "version": "1.0.0",
   "description": "Creates a sample project with Sleeve configuration for a node Web App in Azure",
-  "main": "webapp-node-azure.js",
-  "types": "webapp-node-azure.d.ts",
+  "main": "src/webapp-node-azure.js",
+  "types": "src/webapp-node-azure.d.ts",
   "scripts": {
-    "prepublish": "npm run build",
-    "build": "tsc",    
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    "Microsoft",
-    "Azure",
-    "ARM",
-    "Sleeve",
-    "Web",
-    "App",
-    "Node"
+      "prepublish": "npm run build",
+      "build": "tsc",
+      "test": "mocha test/*.js"
+    },  
+    "dependencies": {
+      "@sleeve/common-utilities": "1.0.0",
+      "@sleeve/resourcegroup-azure": "1.0.0"
+    },
+    "devDependencies": {
+      "@types/chai": "^4.0.1",
+      "@types/mocha": "^2.2.41",
+      "chai": "^4.1.0",
+      "mocha": "^3.4.2"
+    },  
+    "keywords": [
+      "Microsoft",
+      "Azure",
+      "ARM",
+      "Sleeve",
+      "Web",
+      "App",
+      "Node"
   ],
   "author": "Yaron Y. Goland <yarong@microsoft.com> (http://www.goland.org/)",
   "license": "MIT"

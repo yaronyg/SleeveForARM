@@ -1,7 +1,9 @@
-import fs = require("fs");
+import { runNPMInstall } from "@sleeve/common-utilities";
+import { existsSync, stat } from "fs";
 // tslint:disable-next-line:no-var-requires
-const { promisify } = require("util");
-const asyncFsStat = promisify(fs.stat);
+import { promisify } from "util";
+
+const asyncFsStat = promisify(stat);
 
 async function setup() {
     const directoryToSetUp = process.argv[2];
@@ -10,7 +12,7 @@ async function setup() {
      * and create the sleeve.js file and put inside of it
      * a call to new resourcegroup();
      */
-    if (!fs.existsSync(directoryToSetUp)) {
+    if (!existsSync(directoryToSetUp)) {
         throw new Error("Specified path does not exist: " +
                         directoryToSetUp);
     }
