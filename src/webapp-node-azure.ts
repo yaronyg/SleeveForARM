@@ -134,7 +134,7 @@ export default class WebappNodeAzure extends Resource {
         });
 
         await runExecFailOnStderr("git add -A");
-        
+
         await runExecFailOnStderr("git commit -am \"Prep for release\"");
 
         await runExecFailOnStderr("git push");
