@@ -133,6 +133,8 @@ export default class WebappNodeAzure extends Resource {
             filter: (src) => (src === "node_modules" || src === ".sleeve")
         });
 
+        await runExecFailOnStderr("git add -A");
+        
         await runExecFailOnStderr("git commit -am \"Prep for release\"");
 
         await runExecFailOnStderr("git push");
