@@ -65,4 +65,8 @@ typings/
 **/*.js.map
 **/*.d.ts
 
+# We have js files in assets so we need to not apply ignore there
 !assets/**
+
+# Where we create testing related temporary data
+test/testingRoot

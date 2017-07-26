@@ -1,10 +1,9 @@
-import * as childProcess from "child_process";
 import { randomBytes } from "crypto";
 import * as fs from "fs-extra-promise";
 import * as path from "path";
 import { format } from "util";
-import { addPasswordToGitURL, azCommandOutputs, runAzCommand,
-        runExecFailOnStderr } from "./common-utilities";
+import { addPasswordToGitURL, azCommandOutputs, exec,
+        runAzCommand, runExecFailOnStderr } from "./common-utilities";
 import Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
@@ -58,7 +57,7 @@ export default class WebappNodeAzure extends Resource {
     }
 
     public async deployResource(directoryPath: string,
-                                resources: Resource[]): Promise<void> {
+                                resources: Resource[]): Promise<string> {
         const userName = randomBytes(10).toString("hex");
         const password = randomBytes(20).toString("hex");
         await runAzCommand(
@@ -92,7 +91,7 @@ export default class WebappNodeAzure extends Resource {
                     path.basename(directoryPath) + "webapp");
         }
 
-        await runAzCommand(
+        const webappCreateResult = await runAzCommand(
             format("az webapp create --name \"%s\" \
                     --resource-group \"%s\" --plan \"%s\"",
                 this.webAppDNSName,
@@ -100,6 +99,8 @@ export default class WebappNodeAzure extends Resource {
                 this.webAppServicePlanName));
 
         await this.deployToWebApp(directoryPath, password);
+
+        return "http://" + webappCreateResult.defaultHostName;
     }
 
     public async setup(directoryPath: string) {
@@ -126,18 +127,19 @@ export default class WebappNodeAzure extends Resource {
         const gitURLWithPassword = addPasswordToGitURL(webAppGitURLResult,
                                                         password);
 
-        await childProcess.exec(format("git clone %s", gitURLWithPassword),
-                                { cwd: gitCloneDepotParentPath });
+        await exec(format("git clone %s", gitURLWithPassword),
+                    gitCloneDepotParentPath);
 
+        const nodeModulesPath = path.join(directoryPath, "node_modules");
+        const sleevePath = path.join(directoryPath, ".sleeve");
         await fs.copyAsync(directoryPath, gitCloneDepotPath, {
-            filter: (src) => (src === "node_modules" || src === ".sleeve")
+            filter: (src) => (src !== nodeModulesPath && src !== sleevePath)
         });
 
-        await childProcess.exec("git add -A", { cwd: gitCloneDepotPath} );
+        await exec("git add -A", gitCloneDepotPath);
 
-        await childProcess.exec("git commit -am \"Prep for release\"",
-                                    { cwd: gitCloneDepotPath});
+        await exec("git commit -am \"Prep for release\"", gitCloneDepotPath);
 
-        await childProcess.exec("git push", { cwd: gitCloneDepotPath });
+        await exec("git push", gitCloneDepotPath);
     }
 }

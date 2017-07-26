@@ -1,24 +1,28 @@
-import * as childProcess from "child_process";
+import { expect } from "chai";
 import * as fs from "fs-extra-promise";
 import * as path from "path";
+import * as Request from "request-promise-native";
+import * as Winston from "winston";
+import { exec } from "../src/common-utilities";
 import ResourceGroup from "../src/resourcegroup";
 import WebappNodeAzure from "../src/webapp-node-azure";
+import * as TestUtilities from "./testUtilities";
 
 describe("Web app Node Azure", () => {
     before(async () => {
-        await childProcess.exec("npm link", { cwd: path.join(__dirname, "..")});
+        await exec("npm link", path.join(__dirname, ".."));
     });
     after(async () => {
-        await childProcess.exec("npm rm --global sleeveforarm",
-            { cwd: path.join(__dirname, "..")});
+        await exec("npm rm --global sleeveforarm", path.join(__dirname, ".."));
     });
 
-    const testingDirFullPath = path.join(__dirname, "testing");
-    beforeEach(async () => {
-        await fs.ensureDirAsync(testingDirFullPath);
+    let testingDirFullPath: string;
+    beforeEach(async function() {
+        testingDirFullPath = await TestUtilities.setupMochaTestLogging(this);
     });
-    afterEach(async () => {
-        await fs.removeAsync(testingDirFullPath);
+
+    afterEach(() => {
+        TestUtilities.tearDownMochaTestLogging();
     });
 
     it("should be deployable", async function() {
@@ -28,6 +32,9 @@ describe("Web app Node Azure", () => {
         await resourceGroup.deployResource("ick3", []);
         const webAppSamplePath = path.join(testingDirFullPath, "webApp");
         await webappNode.setup(webAppSamplePath);
-        await webappNode.deployResource(webAppSamplePath, [resourceGroup]);
+        const webAppURL =
+            await webappNode.deployResource(webAppSamplePath, [resourceGroup]);
+        const getResult = await Request.get(webAppURL);
+        expect(getResult).equals("Hello World!");
     });
 });

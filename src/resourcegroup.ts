@@ -45,7 +45,7 @@ export default class ResourceGroup extends Resource {
     }
 
     public async deployResource(directoryPath: string,
-                                resources: Resource[]): Promise<void> {
+                                resources: Resource[]): Promise<string> {
         if (this.location === undefined) {
             const locations = await commonUtilities.azAppServiceListLocations();
             this.setLocation(locations[0]
@@ -67,5 +67,7 @@ export default class ResourceGroup extends Resource {
             throw new Error(
                 format("Provisioning failed with %j", groupCreateResult));
         }
+
+        return "";
     }
 }
