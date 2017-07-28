@@ -4,11 +4,16 @@ import * as path from "path";
 import { format } from "util";
 import { addPasswordToGitURL, azCommandOutputs, exec,
         runAzCommand, runExecFailOnStderr } from "./common-utilities";
-import Resource from "./resource";
+import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
-export default class WebappNodeAzure extends Resource {
-    private static findDefaultResourceGroup(resources: Resource[])
+export default class WebappNodeAzure extends Resource.Resource {
+    public static async setup(targetDirectoryPath: string): Promise<void> {
+        fs.copyAsync(path.join(__dirname, "../assets/webapp-node-azure"),
+                        targetDirectoryPath);
+    }
+
+    private static findDefaultResourceGroup(resources: Resource.Resource[])
                     : ResourceGroup {
         let globalResourceGroup = resources.find((resource) => {
             return resource instanceof ResourceGroup &&
@@ -30,8 +35,6 @@ export default class WebappNodeAzure extends Resource {
         throw new Error("There is no defined resource group object!");
     }
 
-    private appBaseName: string;
-
     private resourceGroup: ResourceGroup;
 
     private webAppServicePlanNameProperty: string;
@@ -42,7 +45,7 @@ export default class WebappNodeAzure extends Resource {
         return this.webAppServicePlanNameProperty;
     }
 
-    public setWebAppServicePlanName(name: string): WebappNodeAzure {
+    public setWebAppServicePlanName(name: string) {
         this.webAppServicePlanNameProperty = name;
         return this;
     }
@@ -51,22 +54,18 @@ export default class WebappNodeAzure extends Resource {
         return this.webAppDNSNameProperty;
     }
 
-    public setWebAppServiceDNSName(name: string): WebappNodeAzure {
+    public setWebAppServiceDNSName(name: string) {
         this.webAppDNSNameProperty = name;
         return this;
     }
 
-    public async deployResource(directoryPath: string,
-                                resources: Resource[]): Promise<string> {
+    public async deployResource(resources: Resource.Resource[])
+                                : Promise<Resource.IDeployResponse> {
+        let result = "";
         const userName = randomBytes(10).toString("hex");
         const password = randomBytes(20).toString("hex");
-        await runAzCommand(
-            format("az webapp deployment user set --user-name \"%s\"\
-            --password \"%s\"", userName, password));
-
-        if (this.appBaseName === undefined) {
-            this.appBaseName = path.basename(directoryPath);
-        }
+        // tslint:disable-next-line:max-line-length
+        result += `az webapp deployment user set --user-name \"${userName}" --password \"${password}\"\n`;
 
         if (this.resourceGroup === undefined) {
             this.resourceGroup =
@@ -76,39 +75,39 @@ export default class WebappNodeAzure extends Resource {
         if (this.webAppServicePlanName === undefined) {
             this.setWebAppServicePlanName(
                 this.resourceGroup.resourceGroupName +
-                    path.basename(directoryPath) + "webAppPlan");
+                    this.baseName + "webAppPlan");
         }
 
-        await runAzCommand(
-            format("az appservice plan create --name \"%s\" \
-                    --resource-group \"%s\" --sku FREE",
-                    this.webAppServicePlanName,
-                    this.resourceGroup.resourceGroupName));
+        // tslint:disable-next-line:max-line-length
+        result += `az appservice plan create --name \"${this.webAppServicePlanName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" --sku FREE\n`;
 
         if (this.webAppDNSNameProperty === undefined) {
             this.setWebAppServiceDNSName(
                 this.resourceGroup.resourceGroupName +
-                    path.basename(directoryPath) + "webapp");
+                    this.baseName + "webapp");
         }
 
-        const webappCreateResult = await runAzCommand(
-            format("az webapp create --name \"%s\" \
-                    --resource-group \"%s\" --plan \"%s\"",
-                this.webAppDNSName,
-                this.resourceGroup.resourceGroupName,
-                this.webAppServicePlanName));
+        // tslint:disable-next-line:max-line-length
+        result += `$webappCreateResult=az webapp create --name \"${this.webAppDNSName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" --plan \"${this.webAppServicePlanName}\"\n`;
+        result += "Write-Host The web app front page URL is $webappCreateResult.defaultHostName\n";
+        // tslint:disable-next-line:max-line-length
+        result += `az webapp deployment source config-local-git --name \"${this.webAppDNSName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" --query url --output tsv\n`;
 
-        await this.deployToWebApp(directoryPath, password);
-
-        return "http://" + webappCreateResult.defaultHostName;
+        return {
+            // tslint:disable-next-line:max-line-length
+            functionToCallAfterScript: async () => await this.deployToWebApp(this.directoryPath, password),
+            powerShellScript: result
+        };
     }
 
-    public async setup(directoryPath: string) {
-        fs.copyAsync(path.join(__dirname, "../assets/webapp-node-azure"),
-                        directoryPath);
+    public async getDeployedURL() {
+        // tslint:disable-next-line:max-line-length
+        const azResult = await runAzCommand(`az webapp show --resource-group ${this.resourceGroup.resourceGroupName} --name ${this.webAppDNSName}`);
+        return "http://" + azResult.defaultHostName;
     }
 
-    private async deployToWebApp(directoryPath: string, password: string) {
+    private async deployToWebApp(directoryPath: string, password: string)
+            : Promise<void> {
         const webAppGitURLResult =
             await runAzCommand(
                 format("az webapp deployment source config-local-git \
@@ -122,13 +121,15 @@ export default class WebappNodeAzure extends Resource {
         const gitCloneDepotPath = path.join(gitCloneDepotParentPath,
                                             this.webAppDNSName);
 
-        await fs.ensureDirAsync(gitCloneDepotParentPath);
+        await fs.emptyDirAsync(gitCloneDepotParentPath);
 
         const gitURLWithPassword = addPasswordToGitURL(webAppGitURLResult,
                                                         password);
 
         await exec(format("git clone %s", gitURLWithPassword),
                     gitCloneDepotParentPath);
+
+        await exec("git rm -f -r -q *", gitCloneDepotPath);
 
         const nodeModulesPath = path.join(directoryPath, "node_modules");
         const sleevePath = path.join(directoryPath, ".sleeve");

@@ -1,4 +1,3 @@
-import resource from "./resource";
 import resourceGroup from "./resourcegroup";
 import webappNodeAzure from "./webapp-node-azure";
 

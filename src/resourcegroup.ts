@@ -2,17 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { format, promisify } from "util";
 import * as commonUtilities from "./common-utilities";
-import Resource from "./resource";
+import * as Resource from "./resource";
 
 const asyncFsStat = promisify(fs.stat);
 
-interface IGroupCreateResult {
-    properties: {
-        provisioningState: string;
-    };
-}
-
-export default class ResourceGroup extends Resource {
+export default class ResourceGroup extends Resource.Resource {
     private locationProperty: string;
     private isGlobalDefaultProperty: boolean = false;
     private resourceGroupNameProperty: string;
@@ -21,7 +15,7 @@ export default class ResourceGroup extends Resource {
         return this.locationProperty;
     }
 
-    public setLocation(location: string): ResourceGroup {
+    public setLocation(location: string) {
         this.locationProperty = location;
         return this;
     }
@@ -30,7 +24,7 @@ export default class ResourceGroup extends Resource {
         return this.isGlobalDefaultProperty;
     }
 
-    public setGlobalDefault(setting: boolean): ResourceGroup {
+    public setGlobalDefault(setting: boolean) {
         this.isGlobalDefaultProperty = setting;
         return this;
     }
@@ -39,13 +33,13 @@ export default class ResourceGroup extends Resource {
         return this.resourceGroupNameProperty;
     }
 
-    public setResourceGroupName(name: string): ResourceGroup {
+    public setResourceGroupName(name: string) {
         this.resourceGroupNameProperty = name;
         return this;
     }
 
-    public async deployResource(directoryPath: string,
-                                resources: Resource[]): Promise<string> {
+    public async deployResource(resources: Resource.Resource[])
+                                : Promise<Resource.IDeployResponse> {
         if (this.location === undefined) {
             const locations = await commonUtilities.azAppServiceListLocations();
             this.setLocation(locations[0]
@@ -53,21 +47,14 @@ export default class ResourceGroup extends Resource {
         }
 
         if (this.resourceGroupName === undefined) {
-            this.setResourceGroupName(path.basename(directoryPath) +
-                                        this.location);
+            this.setResourceGroupName(this.baseName + this.location);
         }
 
-        const groupCreateResult: IGroupCreateResult =
-            await commonUtilities.runAzCommand(
-                format("az group create --name %s --location \"%s\"",
-                    this.resourceGroupName,
-                    this.location));
-
-        if (groupCreateResult.properties.provisioningState !== "Succeeded") {
-            throw new Error(
-                format("Provisioning failed with %j", groupCreateResult));
-        }
-
-        return "";
+        // tslint:disable-next-line:max-line-length
+        return {
+            functionToCallAfterScript: async () => { return; },
+            // tslint:disable-next-line:max-line-length
+            powerShellScript: `az group create --name ${this.resourceGroupName} --location ${this.location}\n`
+        };
     }
 }

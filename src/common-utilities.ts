@@ -1,6 +1,7 @@
 import * as child_process from "child_process";
 import * as fs from "fs-extra-promise";
 import * as jsonCycle from "json-cycle";
+import * as tmp from "tmp-promise";
 import { format, promisify } from "util";
 import * as Winston from "winston";
 
@@ -44,6 +45,14 @@ export async function runExecFailOnStderr(command: string, skipLog = false) {
         throw new Error(format("Command %s failed with error %j",
                         command, err));
     }
+}
+
+export async function runPowerShellScript(scriptContents: string) {
+    const tempFileObject = await tmp.file({prefix: "sleeve-", postfix: ".ps1"});
+    await fs.writeAsync(tempFileObject.fd, scriptContents);
+    await fs.closeAsync(tempFileObject.fd);
+    await runExecFailOnStderr(`powershell ${tempFileObject.path}`);
+    console.log(`Temp file location is ${tempFileObject.path}`);
 }
 
 export async function runAzCommand(command: string,

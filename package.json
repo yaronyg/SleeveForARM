@@ -29,8 +29,10 @@
     "json-cycle": "^1.1.0",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
+    "tmp-promise": "^1.0.3",
     "typescript": "^2.4.1",
-    "winston": "^2.3.1"
+    "winston": "^2.3.1",
+    "yargs": "^8.0.2"
   },
   "devDependencies": {
     "@types/chai": "^4.0.1",
@@ -39,6 +41,7 @@
     "@types/node": "^8.0.14",
     "@types/request-promise-native": "^1.0.6",
     "@types/winston": "^2.3.4",
+    "@types/yargs": "^8.0.1",
     "chai": "^4.1.0",
     "mocha": "^3.4.2",
     "tslint": "^5.5.0"

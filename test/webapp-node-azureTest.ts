@@ -3,7 +3,8 @@ import * as fs from "fs-extra-promise";
 import * as path from "path";
 import * as Request from "request-promise-native";
 import * as Winston from "winston";
-import { exec } from "../src/common-utilities";
+import { azCommandOutputs, exec, runAzCommand,
+            runPowerShellScript } from "../src/common-utilities";
 import ResourceGroup from "../src/resourcegroup";
 import WebappNodeAzure from "../src/webapp-node-azure";
 import * as TestUtilities from "./testUtilities";
@@ -26,15 +27,20 @@ describe("Web app Node Azure", () => {
     });
 
     it("should be deployable", async function() {
+        // tslint:disable-next-line:max-line-length
         this.timeout(10 * 60 * 1000);
-        const webappNode = new WebappNodeAzure();
-        const resourceGroup = new ResourceGroup();
-        await resourceGroup.deployResource("ick3", []);
         const webAppSamplePath = path.join(testingDirFullPath, "webApp");
-        await webappNode.setup(webAppSamplePath);
-        const webAppURL =
-            await webappNode.deployResource(webAppSamplePath, [resourceGroup]);
-        const getResult = await Request.get(webAppURL);
+        const webappNode =
+            new WebappNodeAzure().setDirectoryPath(webAppSamplePath);
+        const resourceGroup = new ResourceGroup().setBaseName("ick3");
+        await resourceGroup.deployResource([]);
+        await WebappNodeAzure.setup(webAppSamplePath);
+        const webAppResult =
+            await webappNode.deployResource([resourceGroup]);
+        await runPowerShellScript(webAppResult.powerShellScript);
+        await webAppResult.functionToCallAfterScript();
+        const deployedURL = await webappNode.getDeployedURL();
+        const getResult = await Request.get(deployedURL);
         expect(getResult).equals("Hello World!");
     });
 });
