@@ -9,13 +9,11 @@ import ResourceGroup from "./resourcegroup";
 
 export default class WebappNodeAzure extends Resource.Resource {
     public static async setup(targetDirectoryPath: string): Promise<void> {
-        fs.copyAsync(path.join(__dirname, "../assets/webapp-node-azure"),
-                        targetDirectoryPath);
+        return ResourceGroup.internalSetup(__filename, targetDirectoryPath);
     }
-
     private static findDefaultResourceGroup(resources: Resource.Resource[])
                     : ResourceGroup {
-        let globalResourceGroup = resources.find((resource) => {
+        const globalResourceGroup = resources.find((resource) => {
             return resource instanceof ResourceGroup &&
                 resource.isGlobalDefault;
         }) as ResourceGroup;
@@ -24,15 +22,7 @@ export default class WebappNodeAzure extends Resource.Resource {
             return globalResourceGroup;
         }
 
-        globalResourceGroup = resources.find((resource) => {
-            return resource instanceof ResourceGroup;
-        }) as ResourceGroup;
-
-        if (globalResourceGroup !== undefined) {
-            return globalResourceGroup;
-        }
-
-        throw new Error("There is no defined resource group object!");
+        throw new Error("There is no global default resource group object!");
     }
 
     private resourceGroup: ResourceGroup;
@@ -95,7 +85,7 @@ export default class WebappNodeAzure extends Resource.Resource {
 
         return {
             // tslint:disable-next-line:max-line-length
-            functionToCallAfterScript: async () => await this.deployToWebApp(this.directoryPath, password),
+            functionToCallAfterScriptRuns: async () => await this.deployToWebApp(this.directoryPath, password),
             powerShellScript: result
         };
     }
@@ -129,7 +119,16 @@ export default class WebappNodeAzure extends Resource.Resource {
         await exec(format("git clone %s", gitURLWithPassword),
                     gitCloneDepotParentPath);
 
-        await exec("git rm -f -r -q *", gitCloneDepotPath);
+        const directoryContents = await fs.readdirAsync(gitCloneDepotPath);
+        console.log(`directoryContents: ${directoryContents}`);
+
+        // It's a git depo so it always has a hidden .git file, hence there
+        // will be at least one file
+        if (directoryContents.length > 1) {
+            // This command fails if there isn't at least one file in the
+            // directory, hence why we have the check above.
+            await exec("git rm -f -r -q *", gitCloneDepotPath);
+        }
 
         const nodeModulesPath = path.join(directoryPath, "node_modules");
         const sleevePath = path.join(directoryPath, ".sleeve");
@@ -139,8 +138,14 @@ export default class WebappNodeAzure extends Resource.Resource {
 
         await exec("git add -A", gitCloneDepotPath);
 
-        await exec("git commit -am \"Prep for release\"", gitCloneDepotPath);
+        const result =
+            await exec("git status --porcelain=v2", gitCloneDepotPath);
 
-        await exec("git push", gitCloneDepotPath);
+        if (result.stdout !== "") {
+            await exec("git commit -am \"Prep for release\"",
+                        gitCloneDepotPath);
+
+            await exec("git push", gitCloneDepotPath);
+        }
     }
 }

@@ -7,6 +7,10 @@ import * as Resource from "./resource";
 const asyncFsStat = promisify(fs.stat);
 
 export default class ResourceGroup extends Resource.Resource {
+    public static async setup(targetDirectoryPath: string): Promise<void> {
+        return ResourceGroup.internalSetup(__filename, targetDirectoryPath);
+    }
+
     private locationProperty: string;
     private isGlobalDefaultProperty: boolean = false;
     private resourceGroupNameProperty: string;
@@ -52,7 +56,7 @@ export default class ResourceGroup extends Resource.Resource {
 
         // tslint:disable-next-line:max-line-length
         return {
-            functionToCallAfterScript: async () => { return; },
+            functionToCallAfterScriptRuns: async () => { return; },
             // tslint:disable-next-line:max-line-length
             powerShellScript: `az group create --name ${this.resourceGroupName} --location ${this.location}\n`
         };

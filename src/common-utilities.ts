@@ -13,22 +13,22 @@ export enum azCommandOutputs {
 }
 
 export async function exec(command: string, cwd: string) {
-    let result;
     try {
-        result = child_process.exec(command, { cwd });
+        const result = await childProcessExec(command, { cwd });
         Winston.debug("exec ran with command %s in directory %s and got \
                         output %j", command, cwd, jsonCycle.decycle(result));
+        return result;
     } catch (err) {
         Winston.error("exec ran with command %s in directory %s and \
-                        failed with error %j and output %j",
-                        command, cwd, err, jsonCycle.decycle(result));
+                        failed with error %j\n\
+stdout %s\nstderr %s\n", command, cwd, err, err.stdout, err.stderr);
+        throw err;
     }
 }
 
 export async function runExecFailOnStderr(command: string, skipLog = false) {
-    let commandResult;
     try {
-        commandResult = await childProcessExec(command);
+        const commandResult = await childProcessExec(command);
         if (commandResult.stderr) {
             throw new Error(commandResult.stderr);
         }
@@ -40,10 +40,10 @@ export async function runExecFailOnStderr(command: string, skipLog = false) {
     } catch (err) {
         if (!skipLog) {
             Winston.error("Exec Command: %s failed with commandResult %j",
-                command, commandResult);
+                command, err);
         }
-        throw new Error(format("Command %s failed with error %j",
-                        command, err));
+        throw new Error(format("Command %s failed with error %j\n\
+stdout %s\nstderr %s", command, err, err.stdout, err.stderr));
     }
 }
 

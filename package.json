@@ -1,6 +1,6 @@
 {
   "name": "sleeveforarm",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {
@@ -26,11 +26,11 @@
   "homepage": "https://github.com/yaronyg/SleeveForARM#readme",
   "dependencies": {
     "fs-extra-promise": "^1.0.1",
-    "json-cycle": "^1.1.0",
+    "json-cycle": "^1.2.0",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
     "tmp-promise": "^1.0.3",
-    "typescript": "^2.4.1",
+    "typescript": "^2.4.2",
     "winston": "^2.3.1",
     "yargs": "^8.0.2"
   },
@@ -38,7 +38,7 @@
     "@types/chai": "^4.0.1",
     "@types/fs-extra-promise": "^1.0.2",
     "@types/mocha": "^2.2.41",
-    "@types/node": "^8.0.14",
+    "@types/node": "^8.0.17",
     "@types/request-promise-native": "^1.0.6",
     "@types/winston": "^2.3.4",
     "@types/yargs": "^8.0.1",

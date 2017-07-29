@@ -6,7 +6,9 @@
     "license": "MIT",
     "author": "Microsoft",
     "engines": {
-        "node": ">=6.9.1",
+        "node": ">=6.9.1"
+    },
+    "dependencies": {
         "sleeveforarm": "*"
     },
     "scripts": {
