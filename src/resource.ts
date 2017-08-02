@@ -1,5 +1,6 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
+import * as CommonUtilities from "./common-utilities";
 
 export interface IDeployResponse {
     powerShellScript: string;
@@ -24,6 +25,7 @@ export abstract class Resource {
                         "assets",
                         Path.basename(fileName, ".js"));
         await fs.copyAsync(assetPath, targetDirectoryPath);
+        await CommonUtilities.npmSetup(targetDirectoryPath);
     }
 
     private baseNameProperty: string;

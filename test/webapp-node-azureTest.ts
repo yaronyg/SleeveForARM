@@ -26,19 +26,27 @@ describe("Web app Node Azure", () => {
         this.timeout(10 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
         await fs.emptyDirAsync(webAppSamplePath);
-        await WebappNodeAzure.setup(webAppSamplePath);
-        await CommonUtilities.exec("npm link sleeveforarm", webAppSamplePath);
-        await CommonUtilities.exec("npm install", webAppSamplePath);
+        const sleeveCommandLocation =
+            Path.join(testingDirFullPath, "..", "..", "..", "..",
+                        "src", "sleeve.cmd");
+        await CommonUtilities.exec(`${sleeveCommandLocation} init`,
+            webAppSamplePath);
+        // tslint:disable-next-line:max-line-length
+        await CommonUtilities.exec(`${sleeveCommandLocation} setup -t webapp-node -n foo`,
+            webAppSamplePath);
+        await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
+            webAppSamplePath);
+
+        const resourceGroup: ResourceGroup =
+            require(Path.join(webAppSamplePath, "sleeve.js"))
+            .setDirectoryPath(webAppSamplePath);
+        await resourceGroup.testingCalculateResourceGroupName();
         const webAppNode: WebappNodeAzure =
-            require(Path.join(webAppSamplePath, "sleeve.js"));
-        webAppNode.setDirectoryPath(webAppSamplePath);
-        const resourceGroup = new ResourceGroup().setBaseName("ick3");
-        await resourceGroup.deployResource([]);
-        const webAppResult =
-            await webAppNode.deployResource([resourceGroup]);
-        await CommonUtilities
-            .runPowerShellScript(webAppResult.powerShellScript);
-        await webAppResult.functionToCallAfterScriptRuns();
+            require(Path.join(webAppSamplePath, "foo", "sleeve.js"))
+            .setDirectoryPath(Path.join(webAppSamplePath, "foo"));
+        webAppNode
+            .setResourceGroup(resourceGroup)
+            .setDefaultWebAppDNSName();
         const deployedURL = await webAppNode.getDeployedURL();
         const getResult = await Request.get(deployedURL);
         expect(getResult).equals("Hello World!");

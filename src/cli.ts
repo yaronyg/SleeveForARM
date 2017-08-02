@@ -19,7 +19,12 @@ Yargs
                       "..",
                       "assets",
                       "cliInit");
-      await fs.copyAsync(assetPath, ".");
+      await fs.copyAsync(assetPath, process.cwd());
+      await CommonUtilities.npmSetup(process.cwd());
+      await CommonUtilities.executeOnSleeveResources(process.cwd(),
+        async (path) => {
+          await CommonUtilities.npmSetup(path);
+        });
     }
   )
   .command(
@@ -56,14 +61,8 @@ Yargs
     }
   )
   .help()
+  .strict()
   .argv;
-
-async function npmSetup(path: string) {
-    await CommonUtilities
-      .exec("npm link sleeveforarm", path);
-    await CommonUtilities
-      .exec("npm install", path);
-}
 
 export async function deployResources(rootOfDeploymentPath: string) {
     const resources: Resource.Resource[] = [];
@@ -73,21 +72,17 @@ export async function deployResources(rootOfDeploymentPath: string) {
 this is not a properly configured project");
       process.exit(-1);
     }
-    await npmSetup(rootOfDeploymentPath);
+    await CommonUtilities.npmSetup(rootOfDeploymentPath);
     resources.push(
         require(rootSleevePath).setDirectoryPath(rootOfDeploymentPath));
 
-    const directoryContents = await fs.readdirAsync(rootOfDeploymentPath);
-    for (const childFileName of directoryContents) {
-      const candidatePath = Path.join(rootOfDeploymentPath, childFileName);
-      const isDirectory = await fs.isDirectoryAsync(candidatePath);
-      const sleevePath = Path.join(candidatePath, "sleeve.js");
-      if (isDirectory && await fs.existsAsync(sleevePath)) {
-        await npmSetup(candidatePath);
+    await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,
+      async (candidatePath) => {
+        await CommonUtilities.npmSetup(candidatePath);
+        const sleevePath = Path.join(candidatePath, "sleeve.js");
         resources.push(
           require(sleevePath).setDirectoryPath(candidatePath));
-      }
-    }
+      });
 
     if (resources.length === 0) {
       console.log("There are no resources to deploy");
@@ -109,17 +104,16 @@ this is not a properly configured project");
       await functionToCall();
     }
 
-    console.log("Before");
     for (const resource of resources) {
-      console.log("During: %j", resource);
-      console.log("Test result: %s", (resource instanceof WebappNodeAzure));
-      if (resource instanceof WebappNodeAzure) {
-        console.log("Right before");
+      // BUGBUG: The right way to check if the resource is WebappNodeAzure
+      // is to use instanceof. But for reasons I don't have time to investigate
+      // right now this isn't working with Node 8 at run time.
+      // if (resource instanceof WebappNodeAzure) {
+      if (Object.getPrototypeOf(resource).constructor.name ===
+          "WebappNodeAzure") {
         const url = await resource.getDeployedURL();
         console.log(
           `Web app is available at ${url}`);
-        console.log("Right after");
       }
     }
-    console.log("All done");
 }

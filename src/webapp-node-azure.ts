@@ -6,26 +6,12 @@ import { addPasswordToGitURL, azCommandOutputs, exec,
         runAzCommand, runExecFailOnStderr } from "./common-utilities";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
+import ResourceNotResourceGroup from "./resourceNotResourceGroup";
 
-export default class WebappNodeAzure extends Resource.Resource {
+export default class WebappNodeAzure extends ResourceNotResourceGroup {
     public static async setup(targetDirectoryPath: string): Promise<void> {
-        return ResourceGroup.internalSetup(__filename, targetDirectoryPath);
+        return WebappNodeAzure.internalSetup(__filename, targetDirectoryPath);
     }
-    private static findDefaultResourceGroup(resources: Resource.Resource[])
-                    : ResourceGroup {
-        const globalResourceGroup = resources.find((resource) => {
-            return resource instanceof ResourceGroup &&
-                resource.isGlobalDefault;
-        }) as ResourceGroup;
-
-        if (globalResourceGroup !== undefined) {
-            return globalResourceGroup;
-        }
-
-        throw new Error("There is no global default resource group object!");
-    }
-
-    private resourceGroup: ResourceGroup;
 
     private webAppServicePlanNameProperty: string;
 
@@ -44,6 +30,13 @@ export default class WebappNodeAzure extends Resource.Resource {
         return this.webAppDNSNameProperty;
     }
 
+    public setDefaultWebAppDNSName() {
+        this.setWebAppServiceDNSName(
+            this.resourceGroup.resourceGroupName +
+            this.baseName + "webapp");
+        return this;
+    }
+
     public setWebAppServiceDNSName(name: string) {
         this.webAppDNSNameProperty = name;
         return this;
@@ -52,15 +45,18 @@ export default class WebappNodeAzure extends Resource.Resource {
     public async deployResource(resources: Resource.Resource[])
                                 : Promise<Resource.IDeployResponse> {
         let result = "";
-        const userName = randomBytes(10).toString("hex");
+
+        this.setResourceGroupToGlobalDefaultIfNotSet(resources);
+
+        if (this.webAppDNSNameProperty === undefined) {
+            this.setDefaultWebAppDNSName();
+        }
+
+        const userName = this.webAppDNSName;
         const password = randomBytes(20).toString("hex");
         // tslint:disable-next-line:max-line-length
         result += `az webapp deployment user set --user-name \"${userName}" --password \"${password}\"\n`;
 
-        if (this.resourceGroup === undefined) {
-            this.resourceGroup =
-                WebappNodeAzure.findDefaultResourceGroup(resources);
-        }
 
         if (this.webAppServicePlanName === undefined) {
             this.setWebAppServicePlanName(
@@ -70,12 +66,6 @@ export default class WebappNodeAzure extends Resource.Resource {
 
         // tslint:disable-next-line:max-line-length
         result += `az appservice plan create --name \"${this.webAppServicePlanName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" --sku FREE\n`;
-
-        if (this.webAppDNSNameProperty === undefined) {
-            this.setWebAppServiceDNSName(
-                this.resourceGroup.resourceGroupName +
-                    this.baseName + "webapp");
-        }
 
         // tslint:disable-next-line:max-line-length
         result += `$webappCreateResult=az webapp create --name \"${this.webAppDNSName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" --plan \"${this.webAppServicePlanName}\"\n`;
@@ -120,7 +110,6 @@ export default class WebappNodeAzure extends Resource.Resource {
                     gitCloneDepotParentPath);
 
         const directoryContents = await fs.readdirAsync(gitCloneDepotPath);
-        console.log(`directoryContents: ${directoryContents}`);
 
         // It's a git depo so it always has a hidden .git file, hence there
         // will be at least one file

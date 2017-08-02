@@ -1,9 +1,13 @@
 import * as child_process from "child_process";
 import * as fs from "fs-extra-promise";
 import * as jsonCycle from "json-cycle";
+import * as Path from "path";
 import * as tmp from "tmp-promise";
 import { format, promisify } from "util";
 import * as Winston from "winston";
+import * as CommonUtilities from "./common-utilities";
+import * as Resource from "./resource";
+import ResourceGroup from "./resourcegroup";
 
 const childProcessExec = promisify(child_process.exec);
 
@@ -85,4 +89,25 @@ export function addPasswordToGitURL(gitURL: string, password: string): string {
         const indexOfAt = gitURL.indexOf("@");
         return gitURL.slice(0, indexOfAt) + ":" + password +
             gitURL.slice(indexOfAt);
+}
+
+export async function npmSetup(path: string) {
+    await CommonUtilities
+        .exec("npm link sleeveforarm", path);
+    await CommonUtilities
+        .exec("npm install", path);
+}
+
+export async function executeOnSleeveResources(parentPath: string,
+                                               processFunction:
+                                (path: string) => Promise<void>) {
+    const directoryContents = await fs.readdirAsync(parentPath);
+    for (const childFileName of directoryContents) {
+        const candidatePath = Path.join(parentPath, childFileName);
+        const isDirectory = await fs.isDirectoryAsync(candidatePath);
+        const sleevePath = Path.join(candidatePath, "sleeve.js");
+        if (isDirectory && await fs.existsAsync(sleevePath)) {
+            await processFunction(candidatePath);
+        }
+    }
 }
