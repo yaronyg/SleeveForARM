@@ -5,11 +5,15 @@ import * as Request from "request-promise-native";
 import * as Winston from "winston";
 import * as CommonUtilities from "../src/common-utilities";
 import ResourceGroup from "../src/resourcegroup";
+import ResourceGroupInfrastructure from "../src/resourcegroupInfrastructure";
 import WebappNodeAzure from "../src/webapp-node-azure";
+// tslint:disable-next-line:max-line-length
+import WebappNodeAzureInfrastructure from "../src/webapp-node-azureinfrastructure";
 import * as TestUtilities from "./testUtilities";
 
 describe("Web app Node Azure", () => {
-    before(async () => {
+    before(async function() {
+        this.timeout(10 * 60 * 1000);
         await CommonUtilities.exec("npm link", Path.join(__dirname, ".."));
     });
 
@@ -22,7 +26,7 @@ describe("Web app Node Azure", () => {
         TestUtilities.tearDownMochaTestLogging();
     });
 
-    it("should be deployable", async function() {
+    it.only("should be deployable", async function() {
         this.timeout(10 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
         await fs.emptyDirAsync(webAppSamplePath);
@@ -38,16 +42,21 @@ describe("Web app Node Azure", () => {
             webAppSamplePath);
 
         const resourceGroup: ResourceGroup =
-            require(Path.join(webAppSamplePath, "sleeve.js"))
-            .setDirectoryPath(webAppSamplePath);
-        await resourceGroup.testingCalculateResourceGroupName();
+            require(Path.join(webAppSamplePath, "sleeve.js"));
+        const resourceGroupInfra: ResourceGroupInfrastructure =
+            new ResourceGroupInfrastructure();
+        resourceGroupInfra.initialize(resourceGroup, webAppSamplePath);
+        resourceGroupInfra.hydrate([]);
+
         const webAppNode: WebappNodeAzure =
             require(Path.join(webAppSamplePath, "foo", "sleeve.js"))
             .setDirectoryPath(Path.join(webAppSamplePath, "foo"));
-        webAppNode
-            .setResourceGroup(resourceGroup)
-            .setDefaultWebAppDNSName();
-        const deployedURL = await webAppNode.getDeployedURL();
+        const webAppNodeInfra: WebappNodeAzureInfrastructure =
+            new WebappNodeAzureInfrastructure();
+        webAppNodeInfra.initialize(webAppNode,
+            Path.join(webAppSamplePath, "foo"));
+        webAppNodeInfra.hydrate([resourceGroupInfra]);
+        const deployedURL = await webAppNodeInfra.getDeployedURL();
         const getResult = await Request.get(deployedURL);
         expect(getResult).equals("Hello World!");
     });

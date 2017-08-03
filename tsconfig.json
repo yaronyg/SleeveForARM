@@ -9,6 +9,10 @@
         "strict": true
     },
     "compileOnSave": true,
+    "include": [
+        "src/**/*",
+        "test/**/*"
+    ],
     "exclude" : [
         "node_modules",
         "testingRoot"

@@ -1,15 +1,10 @@
 import IGlobalDefault from "./IGlobalDefault";
 import * as Resource from "./resource";
+import ResourceGroup from "./resourcegroup";
 import ResourceNotResourceGroup from "./resourceNotResourceGroup";
 
 export default class KeyVault extends ResourceNotResourceGroup
         implements IGlobalDefault {
-    public static async setup(targetDirectoryPath: string): Promise<void> {
-        return KeyVault.internalSetup(__filename, targetDirectoryPath);
-    }
-
-    private keyVaultFullNameProperty: string;
-
     private isGlobalDefaultProperty: boolean;
 
     private enableSoftDeleteProperty: boolean;
@@ -20,16 +15,7 @@ export default class KeyVault extends ResourceNotResourceGroup
 
     private enabledForTemplateDeploymentProperty: boolean;
 
-    public get keyVaultFullName() {
-        return this.keyVaultFullNameProperty;
-    }
-
-    public setKeyVaultFullName(name: string): this {
-        this.keyVaultFullNameProperty = name;
-        return this;
-    }
-
-    get isGlobalDefault(): boolean {
+    public get isGlobalDefault(): boolean {
         return this.isGlobalDefaultProperty;
     }
 
@@ -72,38 +58,5 @@ export default class KeyVault extends ResourceNotResourceGroup
     public setEnableForTemplateDeployment(setting: boolean): this {
         this.enabledForTemplateDeploymentProperty = setting;
         return this;
-    }
-
-    public async deployResource(resources: Resource.Resource[])
-        : Promise<Resource.IDeployResponse> {
-
-        this.setResourceGroupToGlobalDefaultIfNotSet(resources);
-
-        if (this.keyVaultFullName === undefined) {
-            this.setKeyVaultFullName(
-                this.resourceGroup.resourceGroupName +
-                    this.baseName);
-        }
-
-        let result = "";
-
-        // tslint:disable:max-line-length
-        result += `az keyvault create --name \"${this.keyVaultFullName}\" --resource-group \"${this.resourceGroup.resourceGroupName}\" \
---enable-soft-delete ${this.isEnabledForSoftDelete} --enabled-for-deployment ${this.isEnabledForDeployment} \
---enabled-for-disk-encryption ${this.isEnabledForDiskEncryption} --enabled-for-template-deployment ${this.isEnabledForTemplateDeployment}\n`;
-        // tslint:enable:max-line-length
-
-        return {
-            functionToCallAfterScriptRuns: async () => { return; },
-            powerShellScript: result
-        };
-    }
-
-    /**
-     * Returns a powershell script to set the given name and secret
-     * on the current KeyVault object.
-     */
-    public async setSecret(name: string, secret: string): string {
-        return `az keyvault secret set --name \"${name}\" --vault-name \"`
     }
 }
