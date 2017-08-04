@@ -2,7 +2,8 @@ import * as fs from "fs-extra-promise";
 import * as path from "path";
 import * as Winston from "winston";
 
-export const testingDirParentPath = path.join(__dirname, "testingRoot");
+export const testingDirParentPath = path.join(__dirname, "..",
+                                        "disposableTestFiles");
 
 function generateLogPath(mochaThis) {
     return path.join(testingDirParentPath, mochaThis.currentTest.parent.title,

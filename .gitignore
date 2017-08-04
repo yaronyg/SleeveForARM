@@ -72,4 +72,4 @@ typings/
 !assets/**
 
 # Where we create testing related temporary data
-test/testingRoot
+disposableTestFiles

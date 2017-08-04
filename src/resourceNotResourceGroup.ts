@@ -1,3 +1,4 @@
+import * as CommonUtilities from "./common-utilities";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
@@ -6,16 +7,9 @@ export default abstract class ResourceNotResourceGroup
             extends Resource.Resource {
     private static findDefaultResourceGroup(resources: Resource.Resource[])
                 : ResourceGroupInfrastructure {
-        const globalResourceGroup = resources.find((resource) => {
-            return resource instanceof ResourceGroupInfrastructure &&
-                resource.isGlobalDefault;
-        }) as ResourceGroupInfrastructure;
-
-        if (globalResourceGroup !== undefined) {
-            return globalResourceGroup;
-        }
-
-        throw new Error("There is no global default resource group object!");
+        return CommonUtilities.findGlobalResourceResourceByType(resources,
+                                            ResourceGroupInfrastructure) as
+                                            ResourceGroupInfrastructure;
     }
 
     private resourceGroupProperty: ResourceGroupInfrastructure;
@@ -27,6 +21,8 @@ export default abstract class ResourceNotResourceGroup
                 ResourceNotResourceGroup
                     .findDefaultResourceGroup(resourcesInEnvironment);
         }
+
+        this.resourcesInEnvironment = resourcesInEnvironment;
 
         return this;
     }

@@ -26,9 +26,9 @@ export abstract class Resource {
 
     protected targetDirectoryPath: string;
 
-    private baseNameProperty: string;
+    protected resourcesInEnvironment: Resource[];
 
-    private scopedResources: Resource[] = [];
+    private baseNameProperty: string;
 
     protected initialize(resource: Resource | null,
                          targetDirectoryPath: string): this {

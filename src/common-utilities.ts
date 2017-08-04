@@ -6,6 +6,7 @@ import * as tmp from "tmp-promise";
 import { format, promisify } from "util";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
+import IGlobalDefault from "./IGlobalDefault";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
@@ -111,3 +112,29 @@ export async function executeOnSleeveResources(parentPath: string,
         }
     }
 }
+
+/**
+ * Javascript doesn't know what interfaces are so when one imports
+ * an interface in Typescript this does not produce any code in Javascript.
+ * But typescript still happily lets one specify (foo instance of I) where I
+ * is the interface. But that check won't work. So we have to do a duck
+ * typing check instead.
+ */
+export function isIGlobalDefault(object: any): object is IGlobalDefault {
+  return (object as IGlobalDefault).isGlobalDefault !== undefined;
+}
+
+export function findGlobalResourceResourceByType(resources: Resource.Resource[],
+                                                 resourceType: any)
+                                                 : Resource.Resource {
+    const resourceFound = resources.find((resource) => {
+        return resource instanceof resourceType &&
+               isIGlobalDefault(resource);
+    });
+    if (resourceFound === undefined) {
+        throw new Error(`ResourceType ${resourceType} not found in \
+${resources}`);
+    }
+    return resourceFound;
+}
+

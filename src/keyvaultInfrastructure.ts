@@ -44,4 +44,15 @@ export default class KeyVaultInfrastructure
             powerShellScript: result
         };
     }
+
+    /**
+     * A really brain dead function that returns a powershell command that
+     * will set the given secret on the current keyvault to the given
+     * value. Note that if the secret already exists it will be
+     * overwritten with the new value.
+     */
+    public setSecret(secretName: string, password: string): string {
+        return `az keyvault secret set --name \"${secretName}\" \
+--vault-name \"${this.keyVaultFullName}\" --value \"${password}\"\n`;
+    }
 }

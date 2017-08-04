@@ -1,9 +1,10 @@
 import * as Crypto from "crypto";
-import * as FS from "fs";
+import * as FS from "fs-extra-promise";
 import * as Path from "path";
 import * as Util from "util";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
+import KeyVaultInfra from "./keyvaultInfrastructure";
 import * as Resource from "./resource";
 import WebappNodeAzure from "./webapp-node-azure";
 
@@ -53,6 +54,12 @@ export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
         // tslint:disable-next-line:max-line-length
         result += `az webapp deployment user set --user-name \"${userName}" --password \"${password}\"\n`;
 
+        const keyVault =
+            CommonUtilities
+                .findGlobalResourceResourceByType(this.resourcesInEnvironment,
+                                                KeyVaultInfra) as KeyVaultInfra;
+        result += keyVault.setSecret(userName, password);
+
         // tslint:disable-next-line:max-line-length
         result += `az appservice plan create --name \"${this.webAppServicePlanName}\" \
 --resource-group \"${resourceGroupName}\" --sku FREE\n`;
@@ -91,7 +98,8 @@ export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
 --name \"${this.webAppDNSName}\" --resource-group \"${resourceGroupName}\" \
 --query url --output tsv\n`;
         const webAppGitURLResult =
-            await CommonUtilities.runAzCommand(getGitURL);
+            await CommonUtilities.runAzCommand(getGitURL,
+                    CommonUtilities.azCommandOutputs.string);
 
         const gitCloneDepotParentPath =
             Path.join(this.targetDirectoryPath, ".sleeve");
