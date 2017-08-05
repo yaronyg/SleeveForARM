@@ -1,0 +1,14 @@
+{
+    "name": "mysql-azure",
+    "description": "Dependencies for mysql-azure",
+    "version": "0.0.1",
+    "private": true,
+    "license": "MIT",
+    "author": "Microsoft",
+    "dependencies": {
+        "sleeveforarm": "*"        
+    },
+    "engines": {
+        "node": ">=6.9.1"
+    }
+}

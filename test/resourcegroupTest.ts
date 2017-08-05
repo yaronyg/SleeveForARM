@@ -14,7 +14,8 @@ describe("Resource group", () => {
 
     let testingDirFullPath: string;
     beforeEach(async function() {
-        testingDirFullPath = await TestUtilities.setupMochaTestLogging(this);
+        [ testingDirFullPath ] =
+            await TestUtilities.setupMochaTestLogging(this);
     });
 
     afterEach(() => {

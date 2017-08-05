@@ -7,6 +7,8 @@ import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import KeyVaultInfrastructure from "./keyvaultInfrastructure";
+import MySqlAzure from "./mysql-azure";
+import MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
@@ -29,6 +31,9 @@ function createInfraResource(resource: Resource.Resource,
   if (resource instanceof WebappNodeAzure) {
     infraResource = new WebappNodeAzureInfrastructure();
   }
+  if (resource instanceof MySqlAzure) {
+    infraResource = new MySqlAzureInfrastructure();
+  }
   if (infraResource === null) {
     throw new Error("Unrecognized resource type!");
   }
@@ -36,8 +41,37 @@ function createInfraResource(resource: Resource.Resource,
   return infraResource;
 }
 
-export async function deployResources(rootOfDeploymentPath: string) {
+export async function setup(rootPath: string, serviceName: string,
+                            serviceType: string) {
+    const targetPath = Path.join(rootPath, serviceName);
+    if (fs.existsSync(targetPath)) {
+      console.log(`Directory with name ${serviceName} already exists.`);
+      process.exit(-1);
+    }
+    await fs.ensureDirAsync(targetPath);
+    let infraResource: IInfrastructure.IInfrastructure;
+    switch (serviceType) {
+      case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {
+        infraResource = new MySqlAzureInfrastructure();
+        break;
+      }
+      case Resource.ResourcesWeSupportSettingUp.WebAppNode: {
+        infraResource = new WebappNodeAzureInfrastructure();
+        break;
+      }
+      default: {
+        throw new Error(`Unsupported resource type ${serviceType}`);
+      }
+    }
+    infraResource.initialize(null, targetPath);
+    await infraResource.setup();
+}
+
+export async function deployResources(
+                          rootOfDeploymentPath: string,
+                          deploymentType: Resource.DeployType) {
     const globalDefaultResourcesToHydrate: InfraResourceType[] = [];
+    const storageResourcesToHydrate: InfraResourceType[] = [];
     const notGlobalDefaultResourcesToHydrate
       : InfraResourceType[] = [];
     const resourcesInEnvironment: InfraResourceType[] = [];
@@ -51,7 +85,8 @@ this is not a properly configured project");
     const rootResourceGroup: ResourceGroup = require(rootSleevePath);
     const rootResourceGroupInfra: InfraResourceType =
       createInfraResource(rootResourceGroup, rootOfDeploymentPath);
-    await rootResourceGroupInfra.hydrate(resourcesInEnvironment);
+    await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
+                                         deploymentType);
     resourcesInEnvironment.push(rootResourceGroupInfra);
 
     await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,
@@ -60,11 +95,15 @@ this is not a properly configured project");
         const sleevePath = Path.join(candidatePath, "sleeve.js");
         const resource = require(sleevePath);
         const infraResource = createInfraResource(resource, candidatePath);
-        if (CommonUtilities.isIGlobalDefault(resource)) {
+        if (CommonUtilities.isIGlobalDefault(infraResource)) {
           globalDefaultResourcesToHydrate.push(infraResource);
-        } else {
-          notGlobalDefaultResourcesToHydrate.push(infraResource);
+          return;
         }
+        if (CommonUtilities.isIStorageResource(infraResource)) {
+          storageResourcesToHydrate.push(infraResource);
+          return;
+        }
+        notGlobalDefaultResourcesToHydrate.push(infraResource);
       });
 
     if (resourcesInEnvironment.length === 0) {
@@ -72,16 +111,14 @@ this is not a properly configured project");
       process.exit(-1);
     }
 
-    for (const infraResource of globalDefaultResourcesToHydrate) {
-      const resource =
-          await infraResource.hydrate(resourcesInEnvironment);
-      resourcesInEnvironment.push(resource);
-    }
-
-    for (const infraResource of notGlobalDefaultResourcesToHydrate) {
-      const resource =
-        await infraResource.hydrate(resourcesInEnvironment);
-      resourcesInEnvironment.push(resource);
+    for (const resourceArray of
+      [globalDefaultResourcesToHydrate, storageResourcesToHydrate,
+        notGlobalDefaultResourcesToHydrate]) {
+      for (const infraResource of resourceArray) {
+        const resource =
+          await infraResource.hydrate(resourcesInEnvironment, deploymentType);
+        resourcesInEnvironment.push(resource);
+      }
     }
 
     let scriptToRun = "";

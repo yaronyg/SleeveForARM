@@ -4,6 +4,7 @@
         "only-arrow-functions": [ false ],
         "max-classes-per-file": [ false ],
         "max-line-length": [true, 80],
+        "no-unused-variable": [ true ],
         "trailing-comma": [ false ]
     }
 }

@@ -7,6 +7,7 @@ import { format, promisify } from "util";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
 import IGlobalDefault from "./IGlobalDefault";
+import IStorageResource from "./IStorageResource";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
@@ -124,8 +125,12 @@ export function isIGlobalDefault(object: any): object is IGlobalDefault {
   return (object as IGlobalDefault).isGlobalDefault !== undefined;
 }
 
-export function findGlobalResourceResourceByType(resources: Resource.Resource[],
-                                                 resourceType: any)
+export function isIStorageResource(object: any): object is IStorageResource {
+    return (object as IStorageResource).isStorageResource !== undefined;
+}
+
+export function findGlobalDefaultResourceByType(resources: Resource.Resource[],
+                                                resourceType: any)
                                                  : Resource.Resource {
     const resourceFound = resources.find((resource) => {
         return resource instanceof resourceType &&
@@ -138,3 +143,14 @@ ${resources}`);
     return resourceFound;
 }
 
+export function findResourcesByInterface<T>(
+    resources: Resource.Resource[],
+    interfaceCheck: (object: any) => object is T): T[] {
+    const passingResource: T[] = [];
+    for (const resource of resources) {
+        if (interfaceCheck(resource)) {
+            passingResource.push(resource);
+        }
+    }
+    return passingResource;
+}

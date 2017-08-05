@@ -16,11 +16,13 @@ export default class KeyVaultInfrastructure
         return this;
     }
     public async setup(): Promise<void> {
-        return KeyVault.internalSetup(__filename, this.targetDirectoryPath);
+        return await KeyVaultInfrastructure
+            .internalSetup(__filename, this.targetDirectoryPath);
     }
-    public async hydrate(resourcesInEnvironment: Resource.Resource[])
+    public async hydrate(resourcesInEnvironment: Resource.Resource[],
+                         deploymentType: Resource.DeployType)
                     : Promise<this> {
-        await super.hydrate(resourcesInEnvironment);
+        await super.hydrate(resourcesInEnvironment, deploymentType);
 
         if (this.keyVaultFullName === undefined) {
             this.keyVaultFullName = this.resourceGroup.resourceGroupName +
@@ -52,7 +54,7 @@ export default class KeyVaultInfrastructure
      * overwritten with the new value.
      */
     public setSecret(secretName: string, password: string): string {
-        return `az keyvault secret set --name \"${secretName}\" \
---vault-name \"${this.keyVaultFullName}\" --value \"${password}\"\n`;
+        return `az keyvault secret set --name '${secretName}' \
+--vault-name '${this.keyVaultFullName}' --value '${password}'\n`;
     }
 }

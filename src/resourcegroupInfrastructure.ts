@@ -26,11 +26,13 @@ export default class ResourceGroupInfrastructure extends ResourceGroup
         return this;
     }
     public async setup(): Promise<void> {
-        return ResourceGroup.internalSetup(__filename,
+        return await ResourceGroup.internalSetup(__filename,
                 this.targetDirectoryPath);
     }
-    public async hydrate(resourcesInEnvironment: Resource.Resource[])
+    public async hydrate(resourcesInEnvironment: Resource.Resource[],
+                         deploymentType: Resource.DeployType)
                     : Promise<this> {
+        await super.hydrate(resourcesInEnvironment, deploymentType);
         if (this.location === undefined) {
             const locations = await CommonUtilities.azAppServiceListLocations();
             this.location = locations[0].name;
@@ -43,7 +45,7 @@ export default class ResourceGroupInfrastructure extends ResourceGroup
 
         if (this.resourceGroupName === undefined) {
             this.setResourceGroupName(
-                this.baseName + locationAcronym);
+                this.baseName + locationAcronym + deploymentType[0]);
         }
 
         return this;

@@ -7,22 +7,22 @@ export default abstract class ResourceNotResourceGroup
             extends Resource.Resource {
     private static findDefaultResourceGroup(resources: Resource.Resource[])
                 : ResourceGroupInfrastructure {
-        return CommonUtilities.findGlobalResourceResourceByType(resources,
+        return CommonUtilities.findGlobalDefaultResourceByType(resources,
                                             ResourceGroupInfrastructure) as
                                             ResourceGroupInfrastructure;
     }
 
     private resourceGroupProperty: ResourceGroupInfrastructure;
 
-    protected async hydrate(resourcesInEnvironment: Resource.Resource[])
-                            : Promise<ResourceNotResourceGroup> {
+    protected async hydrate(resourcesInEnvironment: Resource.Resource[],
+                            deploymentType: Resource.DeployType)
+                            : Promise<this> {
+        await super.hydrate(resourcesInEnvironment, deploymentType);
         if (this.resourceGroup === undefined) {
             this.resourceGroupProperty =
                 ResourceNotResourceGroup
                     .findDefaultResourceGroup(resourcesInEnvironment);
         }
-
-        this.resourcesInEnvironment = resourcesInEnvironment;
 
         return this;
     }

@@ -7,6 +7,21 @@ export interface IDeployResponse {
     powerShellScript: string;
 }
 
+/**
+ * We use the first character of the string value
+ * as part of our names so make sure each type has a
+ * different first character.
+ */
+export enum DeployType {
+  LocalDevelopment = "dev",
+  Production = "prod"
+}
+
+export enum ResourcesWeSupportSettingUp {
+    MySqlAzure = "mySqlAzure",
+    WebAppNode = "webapp-node"
+}
+
 export abstract class Resource {
     protected static async internalSetup(fileName: string,
                                          targetDirectoryPath: string)
@@ -24,6 +39,7 @@ export abstract class Resource {
         await CommonUtilities.npmSetup(targetDirectoryPath);
     }
 
+    protected  deploymentType: DeployType;
     protected targetDirectoryPath: string;
 
     protected resourcesInEnvironment: Resource[];
@@ -36,6 +52,13 @@ export abstract class Resource {
         if (this.baseName === undefined) {
             this.setBaseName(Path.basename(this.targetDirectoryPath));
         }
+        return this;
+    }
+
+    protected async hydrate(resourcesInEnvironment: Resource[],
+                            deploymentType: DeployType): Promise<this> {
+        this.resourcesInEnvironment = resourcesInEnvironment;
+        this.deploymentType = deploymentType;
         return this;
     }
 

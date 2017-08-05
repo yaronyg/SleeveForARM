@@ -8,6 +8,7 @@ import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import KeyVaultInfrastructure from "./keyvaultInfrastructure";
+import MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
@@ -45,28 +46,28 @@ Yargs
       })
     .option("t", {
         alias: "serviceType",
-        choices: ["webapp-node"],
+        choices: ["webapp-node", "mySqlAzure"],
         describe: "Type of service to setup"
     });
     },
     async function(argv) {
-      const targetPath = Path.join(process.cwd(), argv.serviceName);
-      if (fs.existsSync(targetPath)) {
-        console.log(`Directory with name ${argv.serviceName} already exists.`);
-        process.exit(-1);
-      }
-      await fs.ensureDirAsync(targetPath);
-      const webAppInfra = new WebappNodeAzureInfrastructure();
-      webAppInfra.initialize(null, Path.join(process.cwd(), argv.serviceName));
-      await webAppInfra.setup();
+      CliUtilities.setup(process.cwd(), argv.serviceName, argv.serviceType);
     }
   )
   .command(
     "deploy",
     "Deploy services in current project",
-    {},
+    function(moreYargs) {
+      return moreYargs.option("t", {
+        alias: "deploymentType",
+        choices: [Resource.DeployType.LocalDevelopment,
+                  Resource.DeployType.Production],
+        describe: "Set deployment type to either local deployment or \
+deploy to Azure production"
+      });
+    },
     async function(argv) {
-      await CliUtilities.deployResources(process.cwd());
+      await CliUtilities.deployResources(process.cwd(), argv.deploymentType);
     }
   )
   .help()

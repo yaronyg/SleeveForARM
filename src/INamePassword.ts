@@ -1,4 +1,4 @@
 export default interface INamePassword {
-    name: string;
+    securityName: string;
     password: string;
 }
