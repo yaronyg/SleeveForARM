@@ -21,6 +21,11 @@ export async function setupMochaTestLogging(mochaThis, emptyDir = true)
         filename: logFilePath,
         level: "silly"
     });
+    Winston.remove(Winston.transports.Console);
+    Winston.add(Winston.transports.Console, {
+        level: "silly",
+        stderrLevels: []
+    });
     const sleeveCommandLocation =
             Path.join(testingDirFullPath, "..", "..", "..",
                                         "src", "sleeve.cmd");

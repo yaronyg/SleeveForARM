@@ -13,4 +13,13 @@ export default interface IStorageResource {
      * There is no good reason for this.
      */
     getPowershellConnectionVariableNames(): string[];
+
+    /**
+     * Returns the name of a function that can be called
+     * at runtime in the powershell script to set a firewall
+     * rule. The function will have the returned name
+     * and will take as an argument an array of IP addresses
+     * that are allowed to talk to the storage device.
+     */
+    getPowershellFirewallFunctionName(): string;
 }

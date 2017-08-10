@@ -8,12 +8,17 @@ import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
 import KeyVaultInfra from "./keyvaultInfrastructure";
 import * as Resource from "./resource";
+import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
 
+interface IPublishingProfile {
+    publishMethod: string;
+    userName: string;
+    userPWD: string;
+}
+
 export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
-        implements IInfrastructure.IInfrastructure, INamePassword {
-    public securityName: string;
-    public password: string;
+        implements IInfrastructure.IInfrastructure {
     public webAppServicePlanName: string;
     public webAppDNSName: string;
 
@@ -47,17 +52,15 @@ export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
                     this.baseName + "webAppPlan";
         }
 
-        this.securityName = this.baseName;
-        this.password = Crypto.randomBytes(20).toString("hex");
-
         return this;
     }
 
-    public async deployResource(): Promise<IInfrastructure.IDeployResponse> {
+    public async deployResource(developmentDeploy = false)
+            : Promise<IInfrastructure.IDeployResponse> {
         let result = "";
 
         if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
-            result += this.setEnvironmentVariables();
+            result += this.setEnvironmentVariablesAndFirewallRules();
             return {
                 functionToCallAfterScriptRuns: async () => { return; },
                 powerShellScript: result
@@ -71,38 +74,32 @@ ${this.deploymentType}`);
 
         const resourceGroupName = this.resourceGroup.resourceGroupName;
 
-        // tslint:disable-next-line:max-line-length
-        result += `az webapp deployment user set --user-name \"${this.securityName}" --password \"${this.password}\"\n`;
+        result += CommonUtilities.appendErrorCheck(
+`az appservice plan create \
+--name "${this.webAppServicePlanName}" \
+--resource-group "${resourceGroupName}" --sku FREE\n`);
 
-        const keyVault =
-            CommonUtilities
-                .findGlobalDefaultResourceByType(this.resourcesInEnvironment,
-                                                KeyVaultInfra) as KeyVaultInfra;
-        result += keyVault.setSecret(this.securityName, this.password);
+        result += CommonUtilities.appendErrorCheck(
+`$webappCreateResult = az webapp create \
+--name "${this.webAppDNSName}" \
+--resource-group "${resourceGroupName}" --plan "${this.webAppServicePlanName}" \
+| ConvertFrom-Json \n`);
 
-        // tslint:disable-next-line:max-line-length
-        result += `az appservice plan create --name \"${this.webAppServicePlanName}\" \
---resource-group \"${resourceGroupName}\" --sku FREE\n`;
+        result += "Write-Host The web app front page URL is \
+$webappCreateResult.defaultHostName\n";
 
-        // tslint:disable-next-line:max-line-length
-        result += `$webappCreateResult=az webapp create --name \"${this.webAppDNSName}\" \
---resource-group \"${resourceGroupName}\" --plan \"${this.webAppServicePlanName}\ "
-| ConvertFrom-Json \n`;
+        result += CommonUtilities.appendErrorCheck(
+`az webapp deployment source config-local-git \
+--name "${this.webAppDNSName}" --resource-group "${resourceGroupName}" \
+--query url --output tsv\n`);
 
-        // tslint:disable-next-line:max-line-length
-        result += "Write-Host The web app front page URL is $webappCreateResult.defaultHostName\n";
-
-        // tslint:disable-next-line:max-line-length
-        result += `az webapp deployment source config-local-git \
---name \"${this.webAppDNSName}\" --resource-group \"${resourceGroupName}\" \
---query url --output tsv\n`;
-
-        result += this.setEnvironmentVariables();
+        result +=
+            this.setEnvironmentVariablesAndFirewallRules("$webappCreateResult");
 
         return {
             // tslint:disable-next-line:max-line-length
             functionToCallAfterScriptRuns: async () =>
-                await this.deployToWebApp(),
+                await this.deployToWebApp(developmentDeploy),
             powerShellScript: result
         };
     }
@@ -118,9 +115,22 @@ ${this.deploymentType}`);
     private setLocalEnvironmentVariables(powerShellVariables: string[])
                                         : string {
         let result = "";
+        const sleevePath =
+            CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
+        FS.ensureDirSync(sleevePath);
+        const variablePath =
+            Path.join(CommonUtilities
+                        .localScratchDirectory(this.targetDirectoryPath),
+                        ServiceEnvironment.environmentFileName);
+        if (powerShellVariables.length > 0) {
+            result += `New-Item "${variablePath}" -type file -force\n`;
+        }
         for (const powerShellVariable of powerShellVariables) {
-            result += `setx APPSETTING_${powerShellVariable.substring(1)} \
+            const name = powerShellVariable.substring(1);
+            result += `setx APPSETTING_${name} \
 ${powerShellVariable}\n`;
+            result += `Add-Content "${variablePath}" \
+"${name} ${powerShellVariable}"\n`;
         }
         return result;
     }
@@ -142,10 +152,12 @@ ${powerShellVariable} `;
 
         result += "\n";
 
-        return result;
+        return CommonUtilities.appendErrorCheck(result);
     }
 
-    private setEnvironmentVariables(): string {
+    private setEnvironmentVariablesAndFirewallRules(
+            webAppResultVariableName?: string): string {
+        let result = "";
         const storageResources =
             CommonUtilities.findResourcesByInterface<IStorageResource>(
                 this.resourcesInEnvironment,
@@ -156,13 +168,20 @@ ${powerShellVariable} `;
              powerShellVariables
                 .concat(storageResource
                     .getPowershellConnectionVariableNames());
+            if (webAppResultVariableName !== undefined) {
+                result +=
+`${storageResource.getPowershellFirewallFunctionName()}(\
+${webAppResultVariableName}.outboundIpAddresses -split ",")\n`;
+            }
         }
         switch (this.deploymentType) {
             case Resource.DeployType.LocalDevelopment: {
-                return this.setLocalEnvironmentVariables(powerShellVariables);
+                return result +
+                    this.setLocalEnvironmentVariables(powerShellVariables);
             }
             case Resource.DeployType.Production: {
-                return this.setAzureEnvironmentVariables(powerShellVariables);
+                return result +
+                    this.setAzureEnvironmentVariables(powerShellVariables);
             }
             default: {
                 throw new Error(`Unrecognized deployment type \
@@ -171,29 +190,80 @@ ${this.deploymentType}`);
         }
     }
 
-    private async deployToWebApp(): Promise<void> {
+    /**
+     * Deploys a development version of SleeveForArm
+     * @param gitCloneDepotPath
+     */
+    private async developDeployToWebApp(gitCloneDepotPath: string)
+                                        : Promise<void> {
+        // We want to clone node_modules in this case so we need to
+        // get rid of .gitignore
+        await FS.removeAsync(Path.join(gitCloneDepotPath, ".gitignore"));
+
+        const sleeveForArmClonePath =
+            Path.join(gitCloneDepotPath, "sleeveforarm") ;
+        await FS.ensureDirAsync(sleeveForArmClonePath);
+
+        const depotPath = Path.join(__dirname, "..");
+
+        const disposableTestFilesPath =
+            Path.join(depotPath, "disposableTestFiles");
+        const nodeModulesPath =
+            Path.join(depotPath, "node_modules");
+
+        await FS.copyAsync(depotPath, sleeveForArmClonePath, {
+            filter: (src) => (src !== disposableTestFilesPath) &&
+                             (src !== nodeModulesPath)
+        });
+
+        // Need to make the node module files just look like regular files
+        // Otherwise the WebApp Git Repo will treat sleeveforarm as a
+        // sub-module and not properly copy it over.
+        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".git"));
+
+        // Otherwise we won't check in any of the .js or other files we normally
+        // ignore.
+        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".gitignore"));
+    }
+
+    /**
+     * Handles copying the local web app code to Azure
+     * @developmentDeploy This is only used for development of sleeveforarm,
+     * it lets us know we need to deploy to the webapp a development version
+     * of sleeveforarm.
+     */
+    private async deployToWebApp(developmentDeploy = false): Promise<void> {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
-        const getGitURL = `az webapp deployment source config-local-git \
---name \"${this.webAppDNSName}\" --resource-group \"${resourceGroupName}\" \
---query url --output tsv\n`;
-        const webAppGitURLResult =
-            await CommonUtilities.runAzCommand(getGitURL,
-                    CommonUtilities.azCommandOutputs.string);
+
+        const profiles: IPublishingProfile[] =
+            await CommonUtilities.runAzCommand(
+`az webapp deployment list-publishing-profiles --name ${this.webAppDNSName} \
+--resource-group ${resourceGroupName}`);
+
+        const msDeployProfile = profiles.find((profile) =>
+            profile.publishMethod === "MSDeploy");
+
+        if (msDeployProfile === undefined) {
+            throw new Error("We didn't find the MSDeploy profile, huh?");
+        }
+
+        const username = msDeployProfile.userName;
+        const password = msDeployProfile.userPWD;
+
+        const gitURL =
+// tslint:disable-next-line:max-line-length
+`https://${username}:${password}@${this.webAppDNSName}.scm.azurewebsites.net/${this.webAppDNSName}.git`;
 
         const gitCloneDepotParentPath =
-            Path.join(this.targetDirectoryPath, ".sleeve");
+            CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
 
         const gitCloneDepotPath = Path.join(gitCloneDepotParentPath,
                                             this.webAppDNSName);
 
         await FS.emptyDirAsync(gitCloneDepotParentPath);
 
-        const gitURLWithPassword =
-            CommonUtilities.addPasswordToGitURL(webAppGitURLResult,
-                                                this.password);
-
         await CommonUtilities.exec(
-                Util.format("git clone %s", gitURLWithPassword),
+                Util.format("git clone %s", gitURL),
                     gitCloneDepotParentPath);
 
         const directoryContents = await FS.readdirAsync(gitCloneDepotPath);
@@ -212,6 +282,10 @@ ${this.deploymentType}`);
         await FS.copyAsync(this.targetDirectoryPath, gitCloneDepotPath, {
             filter: (src) => (src !== nodeModulesPath && src !== sleevePath)
         });
+
+        if (developmentDeploy) {
+            await this.developDeployToWebApp(gitCloneDepotPath);
+        }
 
         await CommonUtilities.exec("git add -A", gitCloneDepotPath);
 

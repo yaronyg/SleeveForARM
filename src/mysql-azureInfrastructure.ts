@@ -6,6 +6,7 @@ import IStorageResource from "./IStorageResource";
 import KeyVaultInfra from "./keyvaultInfrastructure";
 import MySqlAzure from "./mysql-azure";
 import * as Resource from "./resource";
+import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 
 export default class MySqlAzureInfrastructure extends MySqlAzure
         implements IInfrastructure.IInfrastructure, IStorageResource,
@@ -45,7 +46,12 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
             // This is a combination of https://docs.microsoft.com/en-us/sql/relational-databases/security/strong-passwords
             // and https://technet.microsoft.com/en-us/library/cc956689.aspx.
             // The later came up when setting a password!
-            exclude: "\/:|<>+=.'[]{}(),;?*!@",
+            // The & character got added because it's a reserved command,
+            // even in strings. If we want to use it we need to wrap it
+            // as '"&"'.
+            // I also took out double quotes and ^ because they seem to
+            // disappear when I set them on Keyvault. I submitted a bug on that.
+            exclude: "^\"&\/:|<>+=.'[]{}(),;?*!@",
             length: 32,
             numbers: true,
             strict: true,
@@ -53,9 +59,12 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
             uppercase: true
         });
 
-        this.hostVariableName = `$${this.baseName}_host`;
-        this.userVariableName = `$${this.baseName}_user`;
-        this.passwordVariableName = `$${this.baseName}_password`;
+        this.hostVariableName =
+`$${this.baseName}${ServiceEnvironmentUtilities.resourceHostSuffix}`;
+        this.userVariableName =
+`$${this.baseName}${ServiceEnvironmentUtilities.resourceUserSuffix}`;
+        this.passwordVariableName =
+`$${this.baseName}${ServiceEnvironmentUtilities.resourcePasswordSuffix}`;
 
         return this;
     }
@@ -65,16 +74,18 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const mySqlServerCreateVariableName =
             `$${this.baseName}ServerCreate`;
-        result += `${mySqlServerCreateVariableName} = az mysql server create \
+        result += CommonUtilities.appendErrorCheck(
+`${mySqlServerCreateVariableName} = az mysql server create \
 --resource-group ${resourceGroupName} --name ${this.mySqlAzureFullName} \
---admin-user ${this.securityName} --admin-password '${this.password}' \
---ssl-enforcement Enabled | ConvertFrom-Json \n`;
+--admin-user ${this.securityName} --% --admin-password '${this.password}' \
+--ssl-enforcement Enabled | ConvertFrom-Json \n`);
 
         const keyVault =
             CommonUtilities
                 .findGlobalDefaultResourceByType(this.resourcesInEnvironment,
                                                 KeyVaultInfra) as KeyVaultInfra;
-        result += keyVault.setSecret(this.securityName, this.password);
+        result +=
+            keyVault.setSecretViaPowershell(this.securityName, this.password);
 
         result += `${this.hostVariableName} = \
 ${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
@@ -84,30 +95,11 @@ ${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
 
         result += `${this.passwordVariableName} = '${this.password}'\n`;
 
-        const startIpAddress = "0.0.0.0";
-        let endIpAddress: string;
-        let firewallRuleName: string;
-        switch (this.deploymentType) {
-            case Resource.DeployType.LocalDevelopment: {
-                firewallRuleName = "AllowAllIPs";
-                endIpAddress = "255.255.255.255";
-                break;
-            }
-            case Resource.DeployType.Production: {
-                firewallRuleName = "OnlyAllowAzureIps";
-                endIpAddress = "0.0.0.0";
-                break;
-            }
-            default: {
-                throw new Error(`Unrecognized deployment type \
-${this.deploymentType}`);
-            }
-        }
+        result += this.getFirewallFunction();
 
-        result += `az mysql server firewall-rule create \
---resource-group ${resourceGroupName} --server ${this.mySqlAzureFullName} \
---name ${firewallRuleName} --start-ip-address ${startIpAddress} \
---end-ip-address ${endIpAddress}\n`;
+        if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
+            result += this.setFirewallAllowAll();
+        }
 
         return {
             functionToCallAfterScriptRuns: async () => { return; },
@@ -120,4 +112,32 @@ ${this.deploymentType}`);
                 this.passwordVariableName];
     }
 
+    public getPowershellFirewallFunctionName(): string {
+        return `${this.baseName}SetFirewallRules`;
+    }
+
+    private getFirewallFunction() {
+        const firewallCommand = CommonUtilities.appendErrorCheck(
+`az mysql server firewall-rule create \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--server ${this.mySqlAzureFullName} \
+--name "$name" --start-ip-address $_ \
+--end-ip-address $_\n`, 4);
+
+        return `function ${this.getPowershellFirewallFunctionName()} {\n\
+  $args[0] | ForEach-Object {\n\
+    $name = "${this.baseName}" + ($_ -replace '[\.]', '')\n\
+    ${firewallCommand}\
+  }\n\
+}\n`;
+    }
+
+    private setFirewallAllowAll() {
+        return CommonUtilities.appendErrorCheck(
+`az mysql server firewall-rule create \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--server ${this.mySqlAzureFullName} \
+--name "${this.baseName}AllAccess" --start-ip-address "0.0.0.0" \
+--end-ip-address "255.255.255.255"\n`);
+    }
 }

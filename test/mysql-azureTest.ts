@@ -23,8 +23,8 @@ describe("mySQL Azure", () => {
         TestUtilities.tearDownMochaTestLogging();
     });
 
-    it.only("should be deployable", async function() {
-        const deploymentType = Resource.DeployType.Production;
+    it("should be deployable", async function() {
+        const deploymentType = Resource.DeployType.LocalDevelopment;
         this.timeout(10 * 60 * 1000);
         const mySqlSamplePath = Path.join(testingDirFullPath, "mySQL");
 

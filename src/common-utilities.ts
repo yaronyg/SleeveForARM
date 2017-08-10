@@ -54,11 +54,31 @@ stdout %s\nstderr %s", command, err, err.stdout, err.stderr));
 }
 
 export async function runPowerShellScript(scriptContents: string) {
-    const tempFileObject = await tmp.file({prefix: "sleeve-", postfix: ".ps1"});
-    await fs.writeAsync(tempFileObject.fd, scriptContents);
-    await fs.closeAsync(tempFileObject.fd);
-    await runExecFailOnStderr(`powershell ${tempFileObject.path}`);
-    console.log(`Temp file location is ${tempFileObject.path}`);
+    return new Promise(async function(resolve, reject) {
+        const tempFileObject =
+            await tmp.file({prefix: "sleeve-", postfix: ".ps1"});
+        await fs.writeAsync(tempFileObject.fd, scriptContents);
+        await fs.closeAsync(tempFileObject.fd);
+        Winston.debug(`Temp file location is ${tempFileObject.path}`);
+
+        const ps = child_process.spawn("powershell.exe",
+            ["-NoLogo", "-NonInteractive", tempFileObject.path]);
+
+        ps.stdout.on("data", (data) =>
+            Winston.debug("stdout:" + data.toString()));
+        ps.stderr.on("data", (data) => 
+            Winston.debug("stderr:" + data.toString()));
+        ps.on("exit", (code) => {
+            if (code !== 0) {
+                const error = `runPowerShell ${tempFileObject.path} failed \
+with code ${code}.`;
+                Winston.error(error);
+                reject(Error(error));
+            }
+            resolve();
+        });
+    });
+    //await runExecFailOnStderr(`powershell ${tempFileObject.path}`);
 }
 
 export async function runAzCommand(command: string,
@@ -153,4 +173,23 @@ export function findResourcesByInterface<T>(
         }
     }
     return passingResource;
+}
+
+export const scratchDirectoryName = ".sleeve";
+
+export function localScratchDirectory(targetDirectoryPath: string) {
+  return Path.join(targetDirectoryPath, scratchDirectoryName);
+}
+
+/**
+ * Appends a check for exe failure to a powershell script
+ * command call.
+ * @param command We assume the command ends in \n
+ * @param indent How many spaces to indent the command
+ */
+export function appendErrorCheck(command: string, indent: number = 0) {
+    const indentSpaces = Array(indent + 1).join(" ");
+    return command +
+// tslint:disable-next-line:max-line-length
+`${indentSpaces}if ($LastExitCode -ne 0) { throw \"Command \" + (h)[-1].CommandLine + \" Failed\" }\n`;
 }

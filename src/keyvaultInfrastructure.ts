@@ -1,3 +1,4 @@
+import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import * as Resource from "./resource";
@@ -33,12 +34,13 @@ export default class KeyVaultInfrastructure
     }
     public async deployResource(): Promise<IInfrastructure.IDeployResponse> {
         // tslint:disable:max-line-length
-        const result = `az keyvault create --name \"${this.keyVaultFullName}\" \
+        const result = CommonUtilities.appendErrorCheck(
+`az keyvault create --name \"${this.keyVaultFullName}\" \
 --resource-group \"${this.resourceGroup.resourceGroupName}\" \
 --enable-soft-delete ${this.isEnabledForSoftDelete} \
 --enabled-for-deployment ${this.isEnabledForDeployment} \
 --enabled-for-disk-encryption ${this.isEnabledForDiskEncryption} \
---enabled-for-template-deployment ${this.isEnabledForTemplateDeployment}\n`;
+--enabled-for-template-deployment ${this.isEnabledForTemplateDeployment}\n`);
         // tslint:enable:max-line-length
 
         return {
@@ -53,8 +55,35 @@ export default class KeyVaultInfrastructure
      * value. Note that if the secret already exists it will be
      * overwritten with the new value.
      */
-    public setSecret(secretName: string, password: string): string {
-        return `az keyvault secret set --name '${secretName}' \
---vault-name '${this.keyVaultFullName}' --value '${password}'\n`;
+    public setSecretViaPowershell(secretName: string, password: string)
+        : string {
+        return CommonUtilities.appendErrorCheck(
+`az keyvault secret set --name '${secretName}' \
+--vault-name '${this.keyVaultFullName}' --% --value '${password}'\n`);
     }
+
+    /**
+     * The powershell command will return the secret as a string.
+     * The powershell script will throw an exception if the secret doesn't exit.
+     */
+    public getSecretViaPowershell(secretName: string): string {
+        return CommonUtilities.appendErrorCheck(
+`${this.secretString(secretName)} | ConvertFrom-Json).value\n`);
+    }
+
+    public async getSecret(secretName: string): Promise<string | null> {
+        try {
+            const azResult = await CommonUtilities.runAzCommand(
+`${this.secretString(secretName)}`);
+            return azResult.value;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private secretString(secretName: string): string {
+        return `(az keyvault secret show --name '${secretName}' \
+--vault-name '${this.keyVaultFullName}'`;
+    }
+
 }

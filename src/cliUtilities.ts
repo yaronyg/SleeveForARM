@@ -69,7 +69,8 @@ export async function setup(rootPath: string, serviceName: string,
 
 export async function deployResources(
                           rootOfDeploymentPath: string,
-                          deploymentType: Resource.DeployType) {
+                          deploymentType: Resource.DeployType,
+                          developmentDeploy = false) {
     const globalDefaultResourcesToHydrate: InfraResourceType[] = [];
     const storageResourcesToHydrate: InfraResourceType[] = [];
     const notGlobalDefaultResourcesToHydrate
@@ -121,10 +122,10 @@ this is not a properly configured project");
       }
     }
 
-    let scriptToRun = "";
+    let scriptToRun = "$ErrorActionPreference = \"Stop\"\n";
     const functionsToCallAfterScriptRuns = [];
     for (const resource of resourcesInEnvironment) {
-      const deployResult = await resource.deployResource();
+      const deployResult = await resource.deployResource(developmentDeploy);
       scriptToRun += deployResult.powerShellScript;
       functionsToCallAfterScriptRuns
         .push(deployResult.functionToCallAfterScriptRuns);
@@ -136,16 +137,14 @@ this is not a properly configured project");
       await functionToCall();
     }
 
-    for (const resource of resourcesInEnvironment) {
-      // BUGBUG: The right way to check if the resource is WebappNodeAzure
-      // is to use instanceof. But for reasons I don't have time to investigate
-      // right now this isn't working with Node 8 at run time.
-      // if (resource instanceof WebappNodeAzure) {
-      if (resource instanceof WebappNodeAzureInfrastructure) {
-        const url =
-          await (resource as WebappNodeAzureInfrastructure).getDeployedURL();
-        console.log(
-          `Web app is available at ${url}`);
+    if (deploymentType === Resource.DeployType.Production) {
+      for (const resource of resourcesInEnvironment) {
+        if (resource instanceof WebappNodeAzureInfrastructure) {
+          const url =
+            await (resource as WebappNodeAzureInfrastructure).getDeployedURL();
+          console.log(
+            `Web app is available at ${url}`);
+        }
       }
     }
 }

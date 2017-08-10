@@ -55,8 +55,9 @@ export default class ResourceGroupInfrastructure extends ResourceGroup
         return {
             functionToCallAfterScriptRuns: async () => { return; },
             // tslint:disable-next-line:max-line-length
-            powerShellScript: `az group create --name ${this.resourceGroupName} \
---location \"${this.location}\"\n`
+            powerShellScript: CommonUtilities.appendErrorCheck(
+`az group create --name ${this.resourceGroupName} \
+--location \"${this.location}\"\n`)
         };
     }
 }

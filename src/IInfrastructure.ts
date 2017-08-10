@@ -32,5 +32,5 @@ export interface IInfrastructure {
      * Creates both the script (eventually ARM template we hope) and any
      * additional code that needs to be run in order to deploy a service.
      */
-    deployResource(): Promise<IDeployResponse>;
+    deployResource(developmentDeploy?: boolean): Promise<IDeployResponse>;
 }
