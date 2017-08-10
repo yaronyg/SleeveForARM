@@ -1,4 +1,5 @@
 var http = require('http');
+var ServiceEnvironment = require("sleeveforarm/src/serviceEnvironment");
 
 var server = http.createServer(function(request, response) {
 

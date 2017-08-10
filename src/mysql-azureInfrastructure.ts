@@ -1,4 +1,6 @@
+import * as fs from "fs-extra-promise";
 import * as GeneratePassword from "generate-password";
+import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
@@ -103,8 +105,26 @@ ${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
             result += this.setFirewallAllowAll();
         }
 
+        let scriptPath: string;
+        if (this.pathToMySqlInitializationScript !== undefined) {
+            scriptPath =
+                Path.isAbsolute(this.pathToMySqlInitializationScript) ?
+                this.pathToMySqlInitializationScript :
+                Path.join(this.targetDirectoryPath,
+                          this.pathToMySqlInitializationScript);
+            if (await fs.existsAsync(scriptPath) === false) {
+                throw new Error(`Submitted mySql initialization script, \
+located at ${scriptPath} for ${this.baseName} does not exist.`);
+            }
+        }
+
         return {
-            functionToCallAfterScriptRuns: async () => { return; },
+            functionToCallAfterScriptRuns: async () => {
+                if (scriptPath === undefined) {
+                    return;
+                }
+                await this.runMySqlScript(scriptPath);
+            },
             powerShellScript: result
         };
     }
@@ -118,6 +138,12 @@ ${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
         return `${this.baseName}SetFirewallRules`;
     }
 
+    public async runMySqlScript(pathToScript: string) {
+        await CommonUtilities.exec(`mysql \
+-h ${this.mySqlAzureFullName}.mysql.database.azure.com \
+-u ${this.securityName}@${this.mySqlAzureFullName} \
+-p${this.password} -v < "${pathToScript}"`, this.targetDirectoryPath);
+    }
     private getFirewallFunction() {
         const firewallCommand = CommonUtilities.appendErrorCheck(
 `az mysql server firewall-rule create \

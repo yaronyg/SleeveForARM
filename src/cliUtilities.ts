@@ -70,7 +70,8 @@ export async function setup(rootPath: string, serviceName: string,
 export async function deployResources(
                           rootOfDeploymentPath: string,
                           deploymentType: Resource.DeployType,
-                          developmentDeploy = false) {
+                          developmentDeploy = false)
+                          : Promise<IInfrastructure.IInfrastructure[]> {
     const globalDefaultResourcesToHydrate: InfraResourceType[] = [];
     const storageResourcesToHydrate: InfraResourceType[] = [];
     const notGlobalDefaultResourcesToHydrate
@@ -147,4 +148,5 @@ this is not a properly configured project");
         }
       }
     }
+    return resourcesInEnvironment;
 }
