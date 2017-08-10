@@ -59,7 +59,7 @@ export default class KeyVaultInfrastructure
         : string {
         return CommonUtilities.appendErrorCheck(
 `az keyvault secret set --name '${secretName}' \
---vault-name '${this.keyVaultFullName}' --% --value '${password}'\n`);
+--vault-name '${this.keyVaultFullName}' --value '${password}'\n`);
     }
 
     /**

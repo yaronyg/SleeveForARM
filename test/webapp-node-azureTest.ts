@@ -23,49 +23,49 @@ describe("Web app Node Azure", () => {
     let sleeveCommandLocation: string;
     beforeEach(async function() {
         [testingDirFullPath, sleeveCommandLocation] =
-            await TestUtilities.setupMochaTestLogging(this, false);
+            await TestUtilities.setupMochaTestLogging(this);
     });
 
     afterEach(function() {
         TestUtilities.tearDownMochaTestLogging();
     });
 
-    it.only("should be deployable", async function() {
+    it("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(10 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
-//         await fs.emptyDirAsync(webAppSamplePath);
-//         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
-//             webAppSamplePath);
-//         // tslint:disable-next-line:max-line-length
-//         await CommonUtilities.exec(`${sleeveCommandLocation} setup -t webapp-node -n foo`,
-//             webAppSamplePath);
-//         await CommonUtilities.exec(`${sleeveCommandLocation} \
-// setup -t mySqlAzure -n mySql`, webAppSamplePath);
+        await fs.emptyDirAsync(webAppSamplePath);
+        await CommonUtilities.exec(`${sleeveCommandLocation} init`,
+            webAppSamplePath);
+        // tslint:disable-next-line:max-line-length
+        await CommonUtilities.exec(`${sleeveCommandLocation} setup -t webapp-node -n foo`,
+            webAppSamplePath);
+        await CommonUtilities.exec(`${sleeveCommandLocation} \
+setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
-//         // Set up our test
-//         const fooPath = Path.join(webAppSamplePath, "foo");
-//         await CommonUtilities.exec("npm install mysql2 --save",
-//             fooPath);
-//         await CommonUtilities.exec("npm link sleeveforarm",
-//             fooPath);
+        // Set up our test
+        const fooPath = Path.join(webAppSamplePath, "foo");
+        await CommonUtilities.exec("npm install mysql2 --save",
+            fooPath);
+        await CommonUtilities.exec("npm link sleeveforarm",
+            fooPath);
 
-//         const testAssetsPath = Path.join(__dirname, "..", "testAssets");
-//         for (const fileName of ["index.ts", "deploy.cmd", ".deployment"]) {
-//             const fileToCopyPath = Path.join(testAssetsPath, fileName);
-//             await fs.copyAsync(fileToCopyPath, Path.join(fooPath, fileName),
-//                 { overwrite: true});
-//         }
+        const testAssetsPath = Path.join(__dirname, "..", "testAssets");
+        for (const fileName of ["index.ts", "deploy.cmd", ".deployment"]) {
+            const fileToCopyPath = Path.join(testAssetsPath, fileName);
+            await fs.copyAsync(fileToCopyPath, Path.join(fooPath, fileName),
+                { overwrite: true});
+        }
 
-//         try {
-//             await CommonUtilities.exec(
-//                 "tsc index.ts --target es6 --module commonjs \
-//     --moduleResolution node > NUL", fooPath);
-//         } catch (err) {
-//             // TSC will fail because of spurious type failures, we can
-//             // ignore. If there is a real problem the next script will
-//             // fail.
-//         }
+        try {
+            await CommonUtilities.exec(
+                "tsc index.ts --target es6 --module commonjs \
+    --moduleResolution node > NUL", fooPath);
+        } catch (err) {
+            // TSC will fail because of spurious type failures, we can
+            // ignore. If there is a real problem the next script will
+            // fail.
+        }
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);

@@ -55,9 +55,11 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
             length: 32,
             numbers: true,
             strict: true,
-            symbols: true,
+            symbols: false,
             uppercase: true
         });
+        // BUGBUG: To meet the symbol requirement for now.
+        this.password += "$";
 
         this.hostVariableName =
 `$${this.baseName}${ServiceEnvironmentUtilities.resourceHostSuffix}`;
@@ -77,7 +79,7 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
         result += CommonUtilities.appendErrorCheck(
 `${mySqlServerCreateVariableName} = az mysql server create \
 --resource-group ${resourceGroupName} --name ${this.mySqlAzureFullName} \
---admin-user ${this.securityName} --% --admin-password '${this.password}' \
+--admin-user ${this.securityName} --admin-password '${this.password}' \
 --ssl-enforcement Enabled | ConvertFrom-Json \n`);
 
         const keyVault =
