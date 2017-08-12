@@ -1,11 +1,12 @@
 {
   "name": "sleeveforarm",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {
     "build": "tsc --watch false",
-    "test": "mocha test/*.js"
+    "test": "mocha test/*.js",
+    "prepublishOnly": "tsc --watch false"
   },
   "repository": {
     "type": "git",
@@ -33,7 +34,6 @@
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
     "tmp-promise": "^1.0.3",
-    "typescript": "^2.4.2",
     "winston": "^2.3.1",
     "yargs": "^8.0.2"
   },
@@ -47,6 +47,7 @@
     "@types/yargs": "^8.0.1",
     "chai": "^4.1.0",
     "mocha": "^3.4.2",
-    "tslint": "^5.5.0"
+    "tslint": "^5.5.0",
+    "typescript": "^2.4.2"
   }
 }
