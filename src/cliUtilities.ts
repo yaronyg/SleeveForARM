@@ -1,6 +1,7 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
 import * as Util from "util";
+import * as Winston from "winston";
 import * as Yargs from "yargs";
 import * as CommonUtilities from "./common-utilities";
 import IGlobalDefault from "./IGlobalDefault";
@@ -22,16 +23,17 @@ function createInfraResource(resource: Resource.Resource,
                              targetDirectoryPath: string)
                              : InfraResourceType {
   let infraResource: InfraResourceType | null = null;
-  if (resource instanceof ResourceGroup) {
+
+  if (CommonUtilities.isClass(resource, ResourceGroup)) {
     infraResource = new ResourceGroupInfrastructure();
   }
-  if (resource instanceof KeyVault) {
+  if (CommonUtilities.isClass(resource, KeyVault)) {
     infraResource = new KeyVaultInfrastructure();
   }
-  if (resource instanceof WebappNodeAzure) {
+  if (CommonUtilities.isClass(resource, WebappNodeAzure)) {
     infraResource = new WebappNodeAzureInfrastructure();
   }
-  if (resource instanceof MySqlAzure) {
+  if (CommonUtilities.isClass(resource, MySqlAzure)) {
     infraResource = new MySqlAzureInfrastructure();
   }
   if (infraResource === null) {
@@ -149,4 +151,18 @@ this is not a properly configured project");
       }
     }
     return resourcesInEnvironment;
+}
+
+export function setLoggingIfNeeded(argv: any) {
+  if (argv.version) {
+    Winston.add(Winston.transports.File, {
+      filename: "log.txt",
+      level: "silly"
+    });
+    Winston.remove(Winston.transports.Console);
+    Winston.add(Winston.transports.Console, {
+        level: "silly",
+        stderrLevels: []
+    });
+  }
 }

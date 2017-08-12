@@ -22,6 +22,7 @@ Yargs
     "Initialize a new Sleeve project",
     {},
     async function(argv) {
+      CliUtilities.setLoggingIfNeeded(argv);
       const assetPath =
           Path.join(__dirname,
                       "..",
@@ -51,6 +52,7 @@ Yargs
     });
     },
     async function(argv) {
+      CliUtilities.setLoggingIfNeeded(argv);
       CliUtilities.setup(process.cwd(), argv.serviceName, argv.serviceType);
     }
   )
@@ -67,8 +69,14 @@ deploy to Azure production"
       });
     },
     async function(argv) {
+      CliUtilities.setLoggingIfNeeded(argv);
       await CliUtilities.deployResources(process.cwd(), argv.deploymentType);
     }
+  )
+  .option("v", {
+    alias: "version",
+    describe: "Outputs logs to file and screen"
+  }
   )
   .help()
   .strict()

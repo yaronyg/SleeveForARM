@@ -1,6 +1,6 @@
 {
   "name": "sleeveforarm",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {

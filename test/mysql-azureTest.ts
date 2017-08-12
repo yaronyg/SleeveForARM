@@ -36,11 +36,12 @@ SELECT * FROM fooers\n";
 
     const sleeveJSFile =
 'const MySqlAzure = require("sleeveforarm/src/mysql-azure").default;\n\
-module.exports = new MySqlAzure().initializeWithMySqlScript("sqlFile");\n';
+module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
 
     it.only("should be deployable", async function() {
-        const deploymentType = Resource.DeployType.LocalDevelopment;
+        const deploymentType = Resource.DeployType.Production;
         this.timeout(10 * 60 * 1000);
+
         const mySqlSamplePath = Path.join(testingDirFullPath, "mySQL");
 
         await fs.emptyDirAsync(mySqlSamplePath);
@@ -70,6 +71,7 @@ module.exports = new MySqlAzure().initializeWithMySqlScript("sqlFile");\n';
         expect(sqlResource).to.not.be.undefined;
 
         const testSqlFilePath = Path.join(sqlDir, "testSqlFile");
+
         await fs.writeFileAsync(testSqlFilePath, testSqlFile);
 
         // Test relative path

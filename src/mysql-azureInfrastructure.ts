@@ -1,3 +1,4 @@
+import * as Crypto from "crypto";
 import * as fs from "fs-extra-promise";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
@@ -105,25 +106,27 @@ ${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
             result += this.setFirewallAllowAll();
         }
 
-        let scriptPath: string;
-        if (this.pathToMySqlInitializationScript !== undefined) {
-            scriptPath =
-                Path.isAbsolute(this.pathToMySqlInitializationScript) ?
-                this.pathToMySqlInitializationScript :
-                Path.join(this.targetDirectoryPath,
-                          this.pathToMySqlInitializationScript);
+        const scriptPaths: string [] = [];
+        for (const checkScriptPath of this.pathToMySqlInitializationScripts) {
+            const scriptPath =
+                Path.isAbsolute(checkScriptPath) ? checkScriptPath :
+                    Path.join(this.targetDirectoryPath, checkScriptPath);
             if (await fs.existsAsync(scriptPath) === false) {
                 throw new Error(`Submitted mySql initialization script, \
 located at ${scriptPath} for ${this.baseName} does not exist.`);
             }
+            scriptPaths.push(scriptPath);
         }
 
-        return {
-            functionToCallAfterScriptRuns: async () => {
-                if (scriptPath === undefined) {
-                    return;
-                }
+        const afterScriptRunFunction = async () => {
+            for (const scriptPath of scriptPaths) {
                 await this.runMySqlScript(scriptPath);
+            }
+        };
+
+        return {
+            async functionToCallAfterScriptRuns() {
+                await afterScriptRunFunction();
             },
             powerShellScript: result
         };
@@ -139,10 +142,25 @@ located at ${scriptPath} for ${this.baseName} does not exist.`);
     }
 
     public async runMySqlScript(pathToScript: string) {
-        await CommonUtilities.exec(`mysql \
--h ${this.mySqlAzureFullName}.mysql.database.azure.com \
--u ${this.securityName}@${this.mySqlAzureFullName} \
--p${this.password} -v < "${pathToScript}"`, this.targetDirectoryPath);
+        const firewallRuleName = Crypto.randomBytes(12).toString("hex");
+        try {
+            if (this.deploymentType === Resource.DeployType.Production) {
+                const myIP = await CommonUtilities.getMyIp();
+                await this.setFirewallRule(firewallRuleName, myIP);
+            }
+            CommonUtilities.retryAfterFailure(async () => {
+                await CommonUtilities.exec(`mysql \
+                -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
+                -u ${this.securityName}@${this.mySqlAzureFullName} \
+                -p${this.password} -v < "${pathToScript}"`,
+                this.targetDirectoryPath);
+            }, 5);
+        } finally {
+            if (this.deploymentType === Resource.DeployType.Production) {
+                await this.removeFirewallRules(firewallRuleName);
+            }
+        }
+
     }
     private getFirewallFunction() {
         const firewallCommand = CommonUtilities.appendErrorCheck(
@@ -167,5 +185,22 @@ located at ${scriptPath} for ${this.baseName} does not exist.`);
 --server ${this.mySqlAzureFullName} \
 --name "${this.baseName}AllAccess" --start-ip-address "0.0.0.0" \
 --end-ip-address "255.255.255.255"\n`);
+    }
+
+    private async setFirewallRule(name: string, ipAddress: string) {
+        return await CommonUtilities.runAzCommand(
+`az mysql server firewall-rule create \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--server ${this.mySqlAzureFullName} \
+--name "${name}" --start-ip-address "${ipAddress}" \
+--end-ip-address "${ipAddress}"`);
+    }
+
+    private async removeFirewallRules(name: string) {
+        return await CommonUtilities.runAzCommand(
+`az mysql server firewall-rule delete \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--server-name ${this.mySqlAzureFullName} \
+--name "${name}" --yes`, CommonUtilities.azCommandOutputs.string);
     }
 }

@@ -1,5 +1,6 @@
 import * as child_process from "child_process";
 import * as fs from "fs-extra-promise";
+import * as HTTP from "http";
 import * as jsonCycle from "json-cycle";
 import * as Path from "path";
 import * as tmp from "tmp-promise";
@@ -66,7 +67,7 @@ export async function runPowerShellScript(scriptContents: string) {
 
         ps.stdout.on("data", (data) =>
             Winston.debug("stdout:" + data.toString()));
-        ps.stderr.on("data", (data) => 
+        ps.stderr.on("data", (data) =>
             Winston.debug("stderr:" + data.toString()));
         ps.on("exit", (code) => {
             if (code !== 0) {
@@ -78,7 +79,6 @@ with code ${code}.`;
             resolve();
         });
     });
-    //await runExecFailOnStderr(`powershell ${tempFileObject.path}`);
 }
 
 export async function runAzCommand(command: string,
@@ -192,4 +192,52 @@ export function appendErrorCheck(command: string, indent: number = 0) {
     return command +
 // tslint:disable-next-line:max-line-length
 `${indentSpaces}if ($LastExitCode -ne 0) { throw \"Command \" + (h)[-1].CommandLine + \" Failed\" }\n`;
+}
+
+export function getMyIp(): Promise<string> {
+    return new Promise(function(resolve, reject) {
+        HTTP.get({host: "api.ipify.org", port: 80, path: "/"},
+            function(resp) {
+                resp.on("data", function(ip) {
+                    resolve(ip.toString());
+                });
+                resp.on("error", function(err) {
+                    reject(err);
+                });
+            });
+    });
+}
+
+export async function wait(millisecondsToWait: number) {
+    return new Promise(function(resolve) {
+        setTimeout(function() {
+            resolve();
+        }, millisecondsToWait);
+    });
+}
+
+export async function retryAfterFailure(command: () => Promise<void>,
+                                        counter: number) {
+    try {
+        await command();
+    } catch (err) {
+        if (counter === 0) {
+            throw err;
+        }
+        await wait(1000);
+        await retryAfterFailure(command, --counter);
+    }
+}
+
+/**
+ * I keep running into bizarre situations where instanceof
+ * just doesn't work. I checked the Javascript and I have
+ * no idea what's going on. But really simple checks like
+ * an object that says it is of type foo will return
+ * false to "obj instanceof foo". So I have to use this
+ * check instead. Note that this is NOT a substitute for
+ * instanceof since I don't check inheritance.
+ */
+export function isClass(obj: object, classObj: object): boolean {
+    return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }
