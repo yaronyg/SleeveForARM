@@ -1,12 +1,11 @@
 {
   "name": "sleeveforarm",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {
     "build": "tsc --watch false",
-    "test": "mocha test/*.js",
-    "prepublishOnly": "tsc --watch false"
+    "test": "mocha test/*.js"
   },
   "repository": {
     "type": "git",
