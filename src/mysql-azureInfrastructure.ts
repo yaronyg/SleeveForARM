@@ -2,6 +2,7 @@ import * as Crypto from "crypto";
 import * as fs from "fs-extra-promise";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
+import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
@@ -142,18 +143,36 @@ located at ${scriptPath} for ${this.baseName} does not exist.`);
     }
 
     public async runMySqlScript(pathToScript: string) {
+        let devIp: string;
         const firewallRuleName = Crypto.randomBytes(12).toString("hex");
+        const initSqlCommand =
+`mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
+-u ${this.securityName}@${this.mySqlAzureFullName} \
+-p${this.password} -v < "${pathToScript}"`;
+        const re =
+            /Client with IP address (.*) is not allowed to access the server/;
+        try {
+            await CommonUtilities.exec(initSqlCommand,
+                                        this.targetDirectoryPath);
+            Winston.debug("The request that was supposed to fail to talk to \
+mySQl so we could find out what IP address Azure mySQL sees actually \
+succeeded!");
+            return;
+        } catch (err) {
+            const result = err.message.match(re);
+            if (result.length !== 2) {
+                throw new Error(`Search for dev IP failed with ${err}`);
+            }
+            devIp = result[1];
+        }
+
         try {
             if (this.deploymentType === Resource.DeployType.Production) {
-                const myIP = await CommonUtilities.getMyIp();
-                await this.setFirewallRule(firewallRuleName, myIP);
+                await this.setFirewallRule(firewallRuleName, devIp);
             }
             CommonUtilities.retryAfterFailure(async () => {
-                await CommonUtilities.exec(`mysql \
-                -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
-                -u ${this.securityName}@${this.mySqlAzureFullName} \
-                -p${this.password} -v < "${pathToScript}"`,
-                this.targetDirectoryPath);
+                await CommonUtilities.exec(initSqlCommand,
+                                           this.targetDirectoryPath);
             }, 5);
         } finally {
             if (this.deploymentType === Resource.DeployType.Production) {

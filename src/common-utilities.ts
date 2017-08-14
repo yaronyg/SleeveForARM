@@ -194,20 +194,6 @@ export function appendErrorCheck(command: string, indent: number = 0) {
 `${indentSpaces}if ($LastExitCode -ne 0) { throw \"Command \" + (h)[-1].CommandLine + \" Failed\" }\n`;
 }
 
-export function getMyIp(): Promise<string> {
-    return new Promise(function(resolve, reject) {
-        HTTP.get({host: "api.ipify.org", port: 80, path: "/"},
-            function(resp) {
-                resp.on("data", function(ip) {
-                    resolve(ip.toString());
-                });
-                resp.on("error", function(err) {
-                    reject(err);
-                });
-            });
-    });
-}
-
 export async function wait(millisecondsToWait: number) {
     return new Promise(function(resolve) {
         setTimeout(function() {
