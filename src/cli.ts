@@ -74,7 +74,7 @@ deploy to Azure production"
     }
   )
   .option("v", {
-    alias: "version",
+    alias: "verbose",
     describe: "Outputs logs to file and screen"
   }
   )
