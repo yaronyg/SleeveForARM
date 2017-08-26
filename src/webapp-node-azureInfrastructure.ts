@@ -167,10 +167,10 @@ ${powerShellVariable} `;
             powerShellVariables =
              powerShellVariables
                 .concat(storageResource
-                    .getPowershellConnectionVariableNames());
+                    .getEnvironmentVariables());
             if (webAppResultVariableName !== undefined) {
                 result +=
-`${storageResource.getPowershellFirewallFunctionName()}(\
+`${storageResource.setFirewallRule()}(\
 ${webAppResultVariableName}.outboundIpAddresses -split ",")\n`;
             }
         }

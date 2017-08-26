@@ -3,7 +3,7 @@ import * as fs from "fs-extra-promise";
 import * as Path from "path";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
-import MySqlAzureInfrastructure from "../src/mysql-azureinfrastructure";
+import * as MySqlAzureInfrastructure from "../src/mysql-azureinfrastructure";
 import * as Resource from "../src/resource";
 import * as TestUtilities from "./testUtilities";
 
@@ -75,11 +75,11 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
         await fs.writeFileAsync(testSqlFilePath, testSqlFile);
 
         // Test relative path
-        await (sqlResource as MySqlAzureInfrastructure)
+        await (sqlResource as MySqlAzureInfrastructure.MySqlAzureInfrastructure)
             .runMySqlScript("testSqlFile");
 
         // Test absolute path
-        await (sqlResource as MySqlAzureInfrastructure)
+        await (sqlResource as MySqlAzureInfrastructure.MySqlAzureInfrastructure)
             .runMySqlScript(testSqlFilePath);
     });
 });

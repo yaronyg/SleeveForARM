@@ -1,18 +1,19 @@
 import * as CommonUtilities from "./common-utilities";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
-import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
+import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
 
 export default abstract class ResourceNotResourceGroup
             extends Resource.Resource {
     private static findDefaultResourceGroup(resources: Resource.Resource[])
-                : ResourceGroupInfrastructure {
+                : ResourceGroupInfrastructure.ResourceGroupInfrastructure {
         return CommonUtilities.findGlobalDefaultResourceByType(resources,
-                                            ResourceGroupInfrastructure) as
-                                            ResourceGroupInfrastructure;
+                ResourceGroupInfrastructure.ResourceGroupInfrastructure) as
+                    ResourceGroupInfrastructure.ResourceGroupInfrastructure;
     }
 
-    private resourceGroupProperty: ResourceGroupInfrastructure;
+    private resourceGroupProperty:
+        ResourceGroupInfrastructure.ResourceGroupInfrastructure;
 
     protected async hydrate(resourcesInEnvironment: Resource.Resource[],
                             deploymentType: Resource.DeployType)
@@ -27,11 +28,13 @@ export default abstract class ResourceNotResourceGroup
         return this;
     }
 
-    protected get resourceGroup(): ResourceGroupInfrastructure {
+    protected get resourceGroup()
+            : ResourceGroupInfrastructure.ResourceGroupInfrastructure {
         return this.resourceGroupProperty;
     }
 
-    protected setResourceGroup(resourceGroup: ResourceGroupInfrastructure)
+    protected setResourceGroup(resourceGroup
+            : ResourceGroupInfrastructure.ResourceGroupInfrastructure)
                                 : this {
         this.resourceGroupProperty = resourceGroup;
         return this;

@@ -7,11 +7,11 @@ import * as CommonUtilities from "./common-utilities";
 import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
-import KeyVaultInfrastructure from "./keyvaultInfrastructure";
-import MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
+import * as KeyVaultInfrastructure from "./keyvaultInfrastructure";
+import * as MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
-import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
+import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
 import WebappNodeAzure from "./webapp-node-azure";
 import WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
 
@@ -31,8 +31,8 @@ Yargs
       await fs.copyAsync(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());
       await CommonUtilities.executeOnSleeveResources(process.cwd(),
-        async (path) => {
-          await CommonUtilities.npmSetup(path);
+        (path) => {
+          return CommonUtilities.npmSetup(path);
         });
     }
   )

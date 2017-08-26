@@ -124,14 +124,16 @@ export async function executeOnSleeveResources(parentPath: string,
                                                processFunction:
                                 (path: string) => Promise<void>) {
     const directoryContents = await fs.readdirAsync(parentPath);
+    const promisesToWaitFor = [];
     for (const childFileName of directoryContents) {
         const candidatePath = Path.join(parentPath, childFileName);
         const isDirectory = await fs.isDirectoryAsync(candidatePath);
         const sleevePath = Path.join(candidatePath, "sleeve.js");
         if (isDirectory && await fs.existsAsync(sleevePath)) {
-            await processFunction(candidatePath);
+            promisesToWaitFor.push(processFunction(candidatePath));
         }
     }
+    return Promise.all(promisesToWaitFor);
 }
 
 /**
@@ -224,6 +226,6 @@ export async function retryAfterFailure(command: () => Promise<void>,
  * check instead. Note that this is NOT a substitute for
  * instanceof since I don't check inheritance.
  */
-export function isClass(obj: object, classObj: object): boolean {
+export function isClass(obj: object, classObj: any): boolean {
     return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }

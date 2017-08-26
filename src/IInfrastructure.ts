@@ -1,10 +1,5 @@
 import * as Resource from "./resource";
 
-export interface IDeployResponse {
-    functionToCallAfterScriptRuns: () => Promise<void>;
-    powerShellScript: string;
-}
-
 export interface IInfrastructure {
     /**
      * Used to initialize an infrastructure resource using a non infrastructure
@@ -29,8 +24,17 @@ export interface IInfrastructure {
             deploymentType: Resource.DeployType): Promise<this>;
 
     /**
-     * Creates both the script (eventually ARM template we hope) and any
-     * additional code that needs to be run in order to deploy a service.
+     * Runs the code needed to deploy the resource for the current deployment
+     * type.
      */
-    deployResource(developmentDeploy?: boolean): Promise<IDeployResponse>;
+    deployResource(developmentDeploy?: boolean): Promise<this>;
+
+    /**
+     * Many resources can only handle certain types of requests once their
+     * deployment has reached a particular point. For example, with KeyVault
+     * we can't process requests to add secrets until the KeyVault itself
+     * has been created. This method is used to get an object with the
+     * services the resource offers once it is ready to be used.
+     */
+    getBaseDeployClassInstance(): Promise<any>;
 }
