@@ -2,11 +2,11 @@ import * as Crypto from "crypto";
 import * as FS from "fs-extra-promise";
 import * as Path from "path";
 import * as Util from "util";
+import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
-import KeyVaultInfra from "./keyvaultInfrastructure";
 import * as Resource from "./resource";
 import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
@@ -55,53 +55,48 @@ export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
         return this;
     }
 
-    public async deployResource(developmentDeploy = false)
-            : Promise<IInfrastructure.IDeployResponse> {
-        let result = "";
-
-        if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
-            result += this.setEnvironmentVariablesAndFirewallRules();
-            return {
-                functionToCallAfterScriptRuns: async () => { return; },
-                powerShellScript: result
-            };
+    public async deployResource(developmentDeploy = false): Promise<this> {
+        const storageResources =
+            CommonUtilities.findResourcesByInterface<IStorageResource>(
+                this.resourcesInEnvironment,
+                CommonUtilities.isIStorageResource);
+        const storagePromisesToWaitFor
+            : Array<Promise<BaseDeployStorageResource>> = [];
+        for (const storageResource of storageResources) {
+            const infraStorage =
+                (storageResource as any) as IInfrastructure.IInfrastructure;
+            const basePromise =
+infraStorage.getBaseDeployClassInstance() as Promise<BaseDeployStorageResource>;
+            storagePromisesToWaitFor.push(basePromise);
         }
 
-        if (this.deploymentType !== Resource.DeployType.Production) {
-            throw new Error(`Unrecognized deployment type \
-${this.deploymentType}`);
+        if (this.deploymentType === Resource.DeployType.Production) {
         }
 
-        const resourceGroupName = this.resourceGroup.resourceGroupName;
+        await storagePromisesToWaitFor;
 
-        result += CommonUtilities.appendErrorCheck(
-`az appservice plan create \
---name "${this.webAppServicePlanName}" \
---resource-group "${resourceGroupName}" --sku FREE\n`);
+        const environmentVariablesArray: Array<[string, string]>
+            = [];
+        for (const storageResource of storagePromisesToWaitFor) {
+            const baseDeployStorage = await storageResource;
+            environmentVariablesArray
+                .concat(baseDeployStorage.getEnvironmentVariables());
+        }
+        const sleevePath =
+            CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
+        FS.ensureDirSync(sleevePath);
+        const variablePath =
+            Path.join(CommonUtilities
+                    .localScratchDirectory(this.targetDirectoryPath),
+                    ServiceEnvironment.environmentFileName);
+        const secondStepPromises: Array<Promise<any>> = [];
+        FS.removeSync(variablePath);
+        for (const nameValuePair of environmentVariablesArray) {
+            FS.appendFileSync(variablePath,
+`${nameValuePair[0]} ${nameValuePair[1]}\n`);
+        }
 
-        result += CommonUtilities.appendErrorCheck(
-`$webappCreateResult = az webapp create \
---name "${this.webAppDNSName}" \
---resource-group "${resourceGroupName}" --plan "${this.webAppServicePlanName}" \
-| ConvertFrom-Json \n`);
-
-        result += "Write-Host The web app front page URL is \
-$webappCreateResult.defaultHostName\n";
-
-        result += CommonUtilities.appendErrorCheck(
-`az webapp deployment source config-local-git \
---name "${this.webAppDNSName}" --resource-group "${resourceGroupName}" \
---query url --output tsv\n`);
-
-        result +=
-            this.setEnvironmentVariablesAndFirewallRules("$webappCreateResult");
-
-        return {
-            // tslint:disable-next-line:max-line-length
-            functionToCallAfterScriptRuns: async () =>
-                await this.deployToWebApp(developmentDeploy),
-            powerShellScript: result
-        };
+        return this;
     }
 
     public async getDeployedURL() {
@@ -112,87 +107,69 @@ $webappCreateResult.defaultHostName\n";
         return "http://" + azResult.defaultHostName;
     }
 
-    private setLocalEnvironmentVariables(powerShellVariables: string[])
-                                        : string {
-        let result = "";
-        const sleevePath =
-            CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
-        FS.ensureDirSync(sleevePath);
-        const variablePath =
-            Path.join(CommonUtilities
-                        .localScratchDirectory(this.targetDirectoryPath),
-                        ServiceEnvironment.environmentFileName);
-        if (powerShellVariables.length > 0) {
-            result += `New-Item "${variablePath}" -type file -force\n`;
+    private async deployToProduction(storagePromisesToWaitFor
+        : Array<Promise<BaseDeployStorageResource>>) {
+        const resourceGroupName = this.resourceGroup.resourceGroupName;
+        const webPromise =
+        CommonUtilities.runAzCommand(
+`az appservice plan create \
+--name "${this.webAppServicePlanName}" \
+--resource-group "${resourceGroupName}" --sku FREE`)
+        .then(() => {
+            return CommonUtilities.runAzCommand(
+`az webapp create \
+--name "${this.webAppDNSName}" \
+--resource-group "${resourceGroupName}" --plan "${this.webAppServicePlanName}" \
+| ConvertFrom-Json`, CommonUtilities.azCommandOutputs.json);
+        });
+
+        const webAppCreateResult = await webPromise;
+        await Promise.all(storagePromisesToWaitFor);
+
+        const environmentVariablesArray: Array<[string, string]>
+        = [];
+
+        const secondStepPromises: Array<Promise<any>> = [];
+        const webAppIPs: string[] =
+        webAppCreateResult.outboundIpAddresses.split(",");
+        for (const storageResource of storagePromisesToWaitFor) {
+            const baseDeployStorage = await storageResource;
+
+            webAppIPs.forEach((ipAddr) => {
+                secondStepPromises.push(
+                    baseDeployStorage
+                    .setFirewallRule(ipAddr, ipAddr));
+            });
+
+            environmentVariablesArray.concat(
+                baseDeployStorage.getEnvironmentVariables());
         }
-        for (const powerShellVariable of powerShellVariables) {
-            const name = powerShellVariable.substring(1);
-            result += `setx APPSETTING_${name} \
-${powerShellVariable}\n`;
-            result += `Add-Content "${variablePath}" \
-"${name} ${powerShellVariable}"\n`;
+
+        let environmentalVariables: string = "";
+
+        for (const variablePair of environmentVariablesArray) {
+            environmentalVariables +=
+`${variablePair[0]}=${variablePair[1]} `;
         }
-        return result;
+
+        if (environmentalVariables !== "") {
+        secondStepPromises.push(CommonUtilities.runAzCommand(
+            `az webapp config appsettings set \
+            --name ${this.webAppDNSName} \
+            --resource-group ${this.resourceGroup.resourceGroupName} \
+            --settings ${environmentalVariables}`));
     }
 
-    private setAzureEnvironmentVariables(powerShellVariables: string[])
-                                         : string {
-        if (powerShellVariables.length === 0) {
-            return "";
-        }
+        await Promise.all(secondStepPromises);
 
-        let result = `az webapp config appsettings set \
---name ${this.webAppDNSName} \
---resource-group ${this.resourceGroup.resourceGroupName} --settings `;
-
-        for (const powerShellVariable of powerShellVariables) {
-            result += `${powerShellVariable.substring(1)}=\
-${powerShellVariable} `;
-        }
-
-        result += "\n";
-
-        return CommonUtilities.appendErrorCheck(result);
-    }
-
-    private setEnvironmentVariablesAndFirewallRules(
-            webAppResultVariableName?: string): string {
-        let result = "";
-        const storageResources =
-            CommonUtilities.findResourcesByInterface<IStorageResource>(
-                this.resourcesInEnvironment,
-                CommonUtilities.isIStorageResource);
-        let powerShellVariables: string[]  = [];
-        for (const storageResource of storageResources) {
-            powerShellVariables =
-             powerShellVariables
-                .concat(storageResource
-                    .getEnvironmentVariables());
-            if (webAppResultVariableName !== undefined) {
-                result +=
-`${storageResource.setFirewallRule()}(\
-${webAppResultVariableName}.outboundIpAddresses -split ",")\n`;
-            }
-        }
-        switch (this.deploymentType) {
-            case Resource.DeployType.LocalDevelopment: {
-                return result +
-                    this.setLocalEnvironmentVariables(powerShellVariables);
-            }
-            case Resource.DeployType.Production: {
-                return result +
-                    this.setAzureEnvironmentVariables(powerShellVariables);
-            }
-            default: {
-                throw new Error(`Unrecognized deployment type \
-${this.deploymentType}`);
-            }
-        }
+        await CommonUtilities.runAzCommand(
+`az webapp deployment source config-local-git \
+--name "${this.webAppDNSName}" --resource-group "${resourceGroupName}" \
+--query url --output tsv`);
     }
 
     /**
      * Deploys a development version of SleeveForArm
-     * @param gitCloneDepotPath
      */
     private async developDeployToWebApp(gitCloneDepotPath: string)
                                         : Promise<void> {

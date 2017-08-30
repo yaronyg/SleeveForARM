@@ -8,6 +8,7 @@ import { format, promisify } from "util";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
 import IGlobalDefault from "./IGlobalDefault";
+import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
@@ -151,6 +152,11 @@ export function isIStorageResource(object: any): object is IStorageResource {
     return (object as IStorageResource).isStorageResource !== undefined;
 }
 
+export function isIInfrastructure(object: any)
+        : object is IInfrastructure.IInfrastructure {
+    return (object as IInfrastructure.IInfrastructure).initialize !== undefined;
+}
+
 export function findGlobalDefaultResourceByType(resources: Resource.Resource[],
                                                 resourceType: any)
                                                  : Resource.Resource {
@@ -166,7 +172,8 @@ ${resources}`);
 }
 
 export function findResourcesByInterface<T>(
-    resources: Resource.Resource[],
+    resources: Resource.Resource[] | IInfrastructure.IInfrastructure[]
+        | IStorageResource[],
     interfaceCheck: (object: any) => object is T): T[] {
     const passingResource: T[] = [];
     for (const resource of resources) {

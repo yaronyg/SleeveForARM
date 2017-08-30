@@ -9,8 +9,8 @@ export class BaseDeployKeyVaultInfrastructure {
     public async setSecret(secretName: string, password: string)
         : Promise<this> {
         await CommonUtilities.runAzCommand(
-`az keyvault secret set --name '${secretName}' \
---vault-name '${this.baseKeyVault.keyVaultFullName}' --value '${password}'`);
+`az keyvault secret set --name ${secretName} \
+--vault-name ${this.baseKeyVault.keyVaultFullName} --value ${password}`);
         return this;
     }
 }

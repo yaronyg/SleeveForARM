@@ -3,6 +3,7 @@ import * as fs from "fs-extra-promise";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
 import * as Winston from "winston";
+import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
@@ -18,7 +19,8 @@ export interface ISqlCreateResult {
     name: string;
 }
 
-export class BaseDeployMySqlAzureInfrastructure {
+export class BaseDeployMySqlAzureInfrastructure
+    implements BaseDeployStorageResource {
     private readonly environmentVariablesValues: Array<[string, string]> = [];
     constructor(private baseMySqlAzureInfrastructure:
                     MySqlAzureInfrastructure,
@@ -232,7 +234,7 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 -p${this.password} -v < "${pathToScript}"`;
         const re =
             /Client with IP address (.*) is not allowed to access the server/;
-        CommonUtilities.retryAfterFailure(async () => {
+        await CommonUtilities.retryAfterFailure(async () => {
             await CommonUtilities.exec(initSqlCommand,
                                     this.targetDirectoryPath);
         }, 5);
