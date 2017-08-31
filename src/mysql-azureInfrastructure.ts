@@ -61,8 +61,9 @@ export class BaseDeployMySqlAzureInfrastructure
 }
 
 export class MySqlAzureInfrastructure extends MySqlAzure
-        implements IInfrastructure.IInfrastructure, IStorageResource,
-                    INamePassword {
+        // tslint:disable-next-line:max-line-length
+        implements IInfrastructure.IInfrastructure<BaseDeployMySqlAzureInfrastructure>,
+                    IStorageResource, INamePassword {
     public securityName: string;
     public password: string;
     public isStorageResource: boolean = true;
@@ -125,7 +126,7 @@ export class MySqlAzureInfrastructure extends MySqlAzure
             const createResult = await CommonUtilities.runAzCommand(
     `az mysql server create \
     --resource-group ${resourceGroupName} --name ${this.mySqlAzureFullName} \
-    --admin-user ${this.securityName} --admin-password '${this.password}' \
+    --admin-user ${this.securityName} --admin-password ${this.password} \
     --ssl-enforcement Enabled`, CommonUtilities.azCommandOutputs.json);
             this.promiseGate.openGateSuccess(
                 new BaseDeployMySqlAzureInfrastructure(this, createResult));
@@ -232,8 +233,6 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 `mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
 -u ${this.securityName}@${this.mySqlAzureFullName} \
 -p${this.password} -v < "${pathToScript}"`;
-        const re =
-            /Client with IP address (.*) is not allowed to access the server/;
         await CommonUtilities.retryAfterFailure(async () => {
             await CommonUtilities.exec(initSqlCommand,
                                     this.targetDirectoryPath);

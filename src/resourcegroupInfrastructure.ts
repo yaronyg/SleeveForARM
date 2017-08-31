@@ -13,7 +13,8 @@ export class BaseDeployResourceGroupInfrastructure {
 }
 
 export class ResourceGroupInfrastructure extends ResourceGroup
-    implements IInfrastructure.IInfrastructure {
+    // tslint:disable-next-line:max-line-length
+    implements IInfrastructure.IInfrastructure<BaseDeployResourceGroupInfrastructure> {
     private location: string;
     private resourceGroupNameProperty: string;
     private readonly promiseGate = new PromiseGate();

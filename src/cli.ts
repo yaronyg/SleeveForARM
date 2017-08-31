@@ -1,19 +1,9 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
-import * as Util from "util";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
 import * as CommonUtilities from "./common-utilities";
-import IGlobalDefault from "./IGlobalDefault";
-import * as IInfrastructure from "./IInfrastructure";
-import KeyVault from "./keyvault";
-import * as KeyVaultInfrastructure from "./keyvaultInfrastructure";
-import * as MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
 import * as Resource from "./resource";
-import ResourceGroup from "./resourcegroup";
-import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
-import WebappNodeAzure from "./webapp-node-azure";
-import WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
 
 // tslint:disable-next-line:no-unused-expression
 Yargs

@@ -1,15 +1,10 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
-import * as ReadLine from "readline";
 import * as CommonUtilities from "./common-utilities";
 
 export interface INameValue {
     name: string;
     value: string;
-}
-
-interface INameValueHolder {
-    values: INameValue[];
 }
 
 export const environmentFileName = "environmentVariables.txt";
@@ -22,7 +17,7 @@ export function readEnvironmentVariables() {
         return [];
     }
     const result: INameValue[] = [];
-    const linesOfFile = fs.readFileSync(scratchPath, "utf-8").split("\r\n");
+    const linesOfFile = fs.readFileSync(scratchPath, "utf-8").split("\n");
     for (const line of linesOfFile) {
         const nameValue = line.split(" ");
         if (nameValue.length !== 2) {

@@ -68,6 +68,11 @@ typings/
 **/*.js.map
 **/*.d.ts
 
+# We need this specific .d.ts file because we use it to
+# get rid of annoying tsc errors for libraries we don't have
+# types for
+!declaration.d.ts
+
 # We have js files in assets so we need to not apply ignore there
 !assets/**
 

@@ -17,7 +17,8 @@ export class BaseDeployKeyVaultInfrastructure {
 
 export class KeyVaultInfrastructure
     extends KeyVault
-    implements IInfrastructure.IInfrastructure {
+    // tslint:disable-next-line:max-line-length
+    implements IInfrastructure.IInfrastructure<BaseDeployKeyVaultInfrastructure> {
     public keyVaultFullName: string;
     private readonly promiseGate = new PromiseGate();
 

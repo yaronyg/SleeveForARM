@@ -3,7 +3,6 @@ import * as fs from "fs-extra-promise";
 import * as Path from "path";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
-import IStorageResource from "../src/IStorageResource";
 import * as MySqlAzureInfrastructure from "../src/mysql-azureinfrastructure";
 import * as Resource from "../src/resource";
 import * as TestUtilities from "./testUtilities";
@@ -39,7 +38,7 @@ SELECT * FROM fooers\n";
 'const MySqlAzure = require("sleeveforarm/src/mysql-azure").default;\n\
 module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
 
-    it.only("should be deployable", async function() {
+    it("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(10 * 60 * 1000);
 
@@ -63,7 +62,6 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
 
         const testSqlFilePath = Path.join(sqlDir, "testSqlFile");
         await fs.writeFileAsync(testSqlFilePath, testSqlFile);
-
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);

@@ -1,6 +1,4 @@
 import IGlobalDefault from "./IGlobalDefault";
-import * as Resource from "./resource";
-import ResourceGroup from "./resourcegroup";
 import ResourceNotResourceGroup from "./resourceNotResourceGroup";
 
 export default class KeyVault extends ResourceNotResourceGroup

@@ -1,10 +1,7 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
-import * as Util from "util";
 import * as Winston from "winston";
-import * as Yargs from "yargs";
 import * as CommonUtilities from "./common-utilities";
-import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import * as KeyVaultInfrastructure from "./keyvaultInfrastructure";
@@ -14,9 +11,10 @@ import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
 import WebappNodeAzure from "./webapp-node-azure";
-import WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
+// tslint:disable-next-line:max-line-length
+import * as WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
 
-type InfraResourceType = IInfrastructure.IInfrastructure &
+export type InfraResourceType = IInfrastructure.IInfrastructure<any> &
                          Resource.Resource;
 
 function createInfraResource(resource: Resource.Resource,
@@ -32,7 +30,8 @@ function createInfraResource(resource: Resource.Resource,
     infraResource = new KeyVaultInfrastructure.KeyVaultInfrastructure();
   }
   if (CommonUtilities.isClass(resource, WebappNodeAzure)) {
-    infraResource = new WebappNodeAzureInfrastructure();
+    infraResource =
+      new WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure();
   }
   if (CommonUtilities.isClass(resource, MySqlAzure)) {
     infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
@@ -52,14 +51,15 @@ export async function setup(rootPath: string, serviceName: string,
       process.exit(-1);
     }
     await fs.ensureDirAsync(targetPath);
-    let infraResource: IInfrastructure.IInfrastructure;
+    let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {
         infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
         break;
       }
       case Resource.ResourcesWeSupportSettingUp.WebAppNode: {
-        infraResource = new WebappNodeAzureInfrastructure();
+        infraResource =
+          new WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure();
         break;
       }
       default: {
@@ -74,7 +74,7 @@ export async function deployResources(
                           rootOfDeploymentPath: string,
                           deploymentType: Resource.DeployType,
                           developmentDeploy = false)
-                          : Promise<IInfrastructure.IInfrastructure[]> {
+                          : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
     const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
     if (!(fs.existsSync(rootSleevePath))) {
@@ -114,11 +114,14 @@ this is not a properly configured project");
 
     if (deploymentType === Resource.DeployType.Production) {
       for (const resource of resourcesInEnvironment) {
-        if (resource instanceof WebappNodeAzureInfrastructure) {
-          const url =
-            await (resource as WebappNodeAzureInfrastructure).getDeployedURL();
+        if (resource instanceof
+            WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure) {
+          const baseDeployWebApp =
+            // tslint:disable-next-line:max-line-length
+            await (resource as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure)
+              .getBaseDeployClassInstance();
           console.log(
-            `Web app is available at ${url}`);
+            `Web app is available at ${baseDeployWebApp.getDeployedURL()}`);
         }
       }
     }

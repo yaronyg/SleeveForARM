@@ -1,6 +1,5 @@
 import * as CommonUtilities from "./common-utilities";
 import * as Resource from "./resource";
-import ResourceGroup from "./resourcegroup";
 import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
 
 export default abstract class ResourceNotResourceGroup
@@ -28,7 +27,7 @@ export default abstract class ResourceNotResourceGroup
         return this;
     }
 
-    protected get resourceGroup()
+    public get resourceGroup()
             : ResourceGroupInfrastructure.ResourceGroupInfrastructure {
         return this.resourceGroupProperty;
     }

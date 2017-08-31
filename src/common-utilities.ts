@@ -1,6 +1,5 @@
 import * as child_process from "child_process";
 import * as fs from "fs-extra-promise";
-import * as HTTP from "http";
 import * as jsonCycle from "json-cycle";
 import * as Path from "path";
 import * as tmp from "tmp-promise";
@@ -11,7 +10,6 @@ import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import * as Resource from "./resource";
-import ResourceGroup from "./resourcegroup";
 
 const childProcessExec = promisify(child_process.exec);
 
@@ -153,8 +151,13 @@ export function isIStorageResource(object: any): object is IStorageResource {
 }
 
 export function isIInfrastructure(object: any)
-        : object is IInfrastructure.IInfrastructure {
-    return (object as IInfrastructure.IInfrastructure).initialize !== undefined;
+        : object is IInfrastructure.IInfrastructure<any> {
+    return (object as IInfrastructure.IInfrastructure<any>)
+        .initialize !== undefined;
+}
+
+export function isResource(object: any): object is Resource.Resource {
+    return object instanceof Resource.Resource;
 }
 
 export function findGlobalDefaultResourceByType(resources: Resource.Resource[],
@@ -171,13 +174,16 @@ ${resources}`);
     return resourceFound;
 }
 
-export function findResourcesByInterface<T>(
-    resources: Resource.Resource[] | IInfrastructure.IInfrastructure[]
+export function findInfraResourcesByInterface<T>(
+    resources: Resource.Resource[] | Array<IInfrastructure.IInfrastructure<any>>
         | IStorageResource[],
-    interfaceCheck: (object: any) => object is T): T[] {
-    const passingResource: T[] = [];
+    interfaceCheck: (object: any) => object is T)
+        : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> {
+    const passingResource
+    : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> = [];
     for (const resource of resources) {
-        if (interfaceCheck(resource)) {
+        if (interfaceCheck(resource) && isResource(resource)
+            && isIInfrastructure(resource)) {
             passingResource.push(resource);
         }
     }

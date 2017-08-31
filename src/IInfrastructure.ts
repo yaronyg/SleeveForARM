@@ -1,6 +1,6 @@
 import * as Resource from "./resource";
 
-export interface IInfrastructure {
+export interface IInfrastructure<T> {
     /**
      * Used to initialize an infrastructure resource using a non infrastructure
      * resource (the ones we get out of the sleeve.json files). Note that
@@ -36,5 +36,5 @@ export interface IInfrastructure {
      * has been created. This method is used to get an object with the
      * services the resource offers once it is ready to be used.
      */
-    getBaseDeployClassInstance(): Promise<any>;
+    getBaseDeployClassInstance(): Promise<T>;
 }
