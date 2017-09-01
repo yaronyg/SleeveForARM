@@ -1,12 +1,11 @@
-import * as Crypto from "crypto";
 import * as FS from "fs-extra-promise";
 import * as Path from "path";
 import * as Util from "util";
+import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
-import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
-import KeyVaultInfra from "./keyvaultInfrastructure";
+import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
@@ -17,10 +16,23 @@ interface IPublishingProfile {
     userPWD: string;
 }
 
-export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
-        implements IInfrastructure.IInfrastructure {
+export class BaseDeployWebappNodeAzureInfrastructure {
+    constructor(private nodeInfra: WebappNodeAzureInfrastructure) {}
+    public async getDeployedURL() {
+        // tslint:disable-next-line:max-line-length
+        const azResult = await CommonUtilities.runAzCommand(`az webapp show \
+--resource-group ${this.nodeInfra.resourceGroup.resourceGroupName} \
+--name ${this.nodeInfra.webAppDNSName}`);
+        return "http://" + azResult.defaultHostName;
+    }
+}
+
+export class WebappNodeAzureInfrastructure extends WebappNodeAzure
+        // tslint:disable-next-line:max-line-length
+        implements IInfrastructure.IInfrastructure<BaseDeployWebappNodeAzureInfrastructure> {
     public webAppServicePlanName: string;
     public webAppDNSName: string;
+    private readonly promiseGate = new PromiseGate();
 
     public initialize(resource: WebappNodeAzure | null,
                       targetDirectoryPath: string): this {
@@ -55,175 +67,124 @@ export default class WebappNodeAzureInfrastructure extends WebappNodeAzure
         return this;
     }
 
-    public async deployResource(developmentDeploy = false)
-            : Promise<IInfrastructure.IDeployResponse> {
-        let result = "";
-
-        if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
-            result += this.setEnvironmentVariablesAndFirewallRules();
-            return {
-                functionToCallAfterScriptRuns: async () => { return; },
-                powerShellScript: result
-            };
+    public async deployResource(developmentDeploy = false): Promise<this> {
+        await this.resourceGroup.getBaseDeployClassInstance();
+        const storageResources =
+            CommonUtilities.findInfraResourcesByInterface<IStorageResource>(
+                this.resourcesInEnvironment,
+                CommonUtilities.isIStorageResource);
+        const storagePromisesToWaitFor
+            : Array<Promise<BaseDeployStorageResource>> = [];
+        for (const storageResource of storageResources) {
+            storagePromisesToWaitFor
+                .push(storageResource.getBaseDeployClassInstance());
         }
 
-        if (this.deploymentType !== Resource.DeployType.Production) {
-            throw new Error(`Unrecognized deployment type \
-${this.deploymentType}`);
+        await (this.deploymentType === Resource.DeployType.Production ?
+            this.deployToProduction(developmentDeploy,
+                storagePromisesToWaitFor) :
+            this.deployToDev(storagePromisesToWaitFor));
+
+        this.promiseGate
+            .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
+
+        return this;
+    }
+
+    public getBaseDeployClassInstance()
+        : Promise<BaseDeployWebappNodeAzureInfrastructure> {
+        return this.promiseGate.promise.then(
+            function(baseClass: BaseDeployWebappNodeAzureInfrastructure) {
+                return baseClass;
+            });
+    }
+    private async deployToDev(storagePromisesToWaitFor
+            : Array<Promise<BaseDeployStorageResource>>) {
+        const baseStorageResources: BaseDeployStorageResource[] =
+             await Promise.all(storagePromisesToWaitFor);
+
+        let environmentVariablesArray: Array<[string, string]> = [];
+        for (const baseStorageResource of baseStorageResources) {
+            environmentVariablesArray =
+                [...environmentVariablesArray,
+                 ...baseStorageResource.getEnvironmentVariables()];
         }
 
-        const resourceGroupName = this.resourceGroup.resourceGroupName;
-
-        result += CommonUtilities.appendErrorCheck(
-`az appservice plan create \
---name "${this.webAppServicePlanName}" \
---resource-group "${resourceGroupName}" --sku FREE\n`);
-
-        result += CommonUtilities.appendErrorCheck(
-`$webappCreateResult = az webapp create \
---name "${this.webAppDNSName}" \
---resource-group "${resourceGroupName}" --plan "${this.webAppServicePlanName}" \
-| ConvertFrom-Json \n`);
-
-        result += "Write-Host The web app front page URL is \
-$webappCreateResult.defaultHostName\n";
-
-        result += CommonUtilities.appendErrorCheck(
-`az webapp deployment source config-local-git \
---name "${this.webAppDNSName}" --resource-group "${resourceGroupName}" \
---query url --output tsv\n`);
-
-        result +=
-            this.setEnvironmentVariablesAndFirewallRules("$webappCreateResult");
-
-        return {
-            // tslint:disable-next-line:max-line-length
-            functionToCallAfterScriptRuns: async () =>
-                await this.deployToWebApp(developmentDeploy),
-            powerShellScript: result
-        };
-    }
-
-    public async getDeployedURL() {
-        // tslint:disable-next-line:max-line-length
-        const azResult = await CommonUtilities.runAzCommand(`az webapp show \
---resource-group ${this.resourceGroup.resourceGroupName} \
---name ${this.webAppDNSName}`);
-        return "http://" + azResult.defaultHostName;
-    }
-
-    private setLocalEnvironmentVariables(powerShellVariables: string[])
-                                        : string {
-        let result = "";
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
-        FS.ensureDirSync(sleevePath);
+        await FS.ensureDirAsync(sleevePath);
         const variablePath =
             Path.join(CommonUtilities
                         .localScratchDirectory(this.targetDirectoryPath),
-                        ServiceEnvironment.environmentFileName);
-        if (powerShellVariables.length > 0) {
-            result += `New-Item "${variablePath}" -type file -force\n`;
+                      ServiceEnvironment.environmentFileName);
+        FS.removeSync(variablePath);
+        for (const nameValuePair of environmentVariablesArray) {
+            FS.appendFileSync(variablePath,
+                `${nameValuePair[0]} ${nameValuePair[1]}\n`);
         }
-        for (const powerShellVariable of powerShellVariables) {
-            const name = powerShellVariable.substring(1);
-            result += `setx APPSETTING_${name} \
-${powerShellVariable}\n`;
-            result += `Add-Content "${variablePath}" \
-"${name} ${powerShellVariable}"\n`;
-        }
-        return result;
     }
 
-    private setAzureEnvironmentVariables(powerShellVariables: string[])
-                                         : string {
-        if (powerShellVariables.length === 0) {
-            return "";
-        }
-
-        let result = `az webapp config appsettings set \
+    private async deployToProduction(
+        developmentDeploy: boolean,
+        storagePromisesToWaitFor
+            : Array<Promise<BaseDeployStorageResource>>) {
+        const resourceGroupName = this.resourceGroup.resourceGroupName;
+        const webPromise =
+            CommonUtilities.runAzCommand(
+`az appservice plan create \
+--name ${this.webAppServicePlanName} \
+--resource-group ${resourceGroupName} --sku FREE`)
+            .then(() => {
+                return CommonUtilities.runAzCommand(
+`az webapp create \
 --name ${this.webAppDNSName} \
---resource-group ${this.resourceGroup.resourceGroupName} --settings `;
-
-        for (const powerShellVariable of powerShellVariables) {
-            result += `${powerShellVariable.substring(1)}=\
-${powerShellVariable} `;
-        }
-
-        result += "\n";
-
-        return CommonUtilities.appendErrorCheck(result);
-    }
-
-    private setEnvironmentVariablesAndFirewallRules(
-            webAppResultVariableName?: string): string {
-        let result = "";
-        const storageResources =
-            CommonUtilities.findResourcesByInterface<IStorageResource>(
-                this.resourcesInEnvironment,
-                CommonUtilities.isIStorageResource);
-        let powerShellVariables: string[]  = [];
-        for (const storageResource of storageResources) {
-            powerShellVariables =
-             powerShellVariables
-                .concat(storageResource
-                    .getPowershellConnectionVariableNames());
-            if (webAppResultVariableName !== undefined) {
-                result +=
-`${storageResource.getPowershellFirewallFunctionName()}(\
-${webAppResultVariableName}.outboundIpAddresses -split ",")\n`;
-            }
-        }
-        switch (this.deploymentType) {
-            case Resource.DeployType.LocalDevelopment: {
-                return result +
-                    this.setLocalEnvironmentVariables(powerShellVariables);
-            }
-            case Resource.DeployType.Production: {
-                return result +
-                    this.setAzureEnvironmentVariables(powerShellVariables);
-            }
-            default: {
-                throw new Error(`Unrecognized deployment type \
-${this.deploymentType}`);
-            }
-        }
-    }
-
-    /**
-     * Deploys a development version of SleeveForArm
-     * @param gitCloneDepotPath
-     */
-    private async developDeployToWebApp(gitCloneDepotPath: string)
-                                        : Promise<void> {
-        // We want to clone node_modules in this case so we need to
-        // get rid of .gitignore
-        await FS.removeAsync(Path.join(gitCloneDepotPath, ".gitignore"));
-
-        const sleeveForArmClonePath =
-            Path.join(gitCloneDepotPath, "sleeveforarm") ;
-        await FS.ensureDirAsync(sleeveForArmClonePath);
-
-        const depotPath = Path.join(__dirname, "..");
-
-        const disposableTestFilesPath =
-            Path.join(depotPath, "disposableTestFiles");
-        const nodeModulesPath =
-            Path.join(depotPath, "node_modules");
-
-        await FS.copyAsync(depotPath, sleeveForArmClonePath, {
-            filter: (src) => (src !== disposableTestFilesPath) &&
-                             (src !== nodeModulesPath)
+--resource-group ${resourceGroupName} \
+--plan ${this.webAppServicePlanName}`, CommonUtilities.azCommandOutputs.json);
         });
 
-        // Need to make the node module files just look like regular files
-        // Otherwise the WebApp Git Repo will treat sleeveforarm as a
-        // sub-module and not properly copy it over.
-        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".git"));
+        const webAppCreateResult = await webPromise;
+        const baseStorageResources: BaseDeployStorageResource[]
+            = await Promise.all(storagePromisesToWaitFor);
 
-        // Otherwise we won't check in any of the .js or other files we normally
-        // ignore.
-        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".gitignore"));
+        let environmentVariablesArray: Array<[string, string]> = [];
+
+        const secondStepPromises: Array<Promise<any>> = [];
+        const webAppIPs: string[] =
+            webAppCreateResult.outboundIpAddresses.split(",");
+        for (const baseStorageResource of baseStorageResources) {
+            webAppIPs.forEach((ipAddr) => {
+                secondStepPromises.push(
+                    baseStorageResource
+                        .setFirewallRule(this.baseName, ipAddr));
+            });
+
+            environmentVariablesArray =
+                [...environmentVariablesArray,
+                 ...baseStorageResource.getEnvironmentVariables()];
+        }
+
+        let environmentalVariables: string = "";
+
+        for (const variablePair of environmentVariablesArray) {
+            environmentalVariables += `${variablePair[0]}=${variablePair[1]} `;
+        }
+
+        if (environmentalVariables !== "") {
+            secondStepPromises.push(CommonUtilities.runAzCommand(
+`az webapp config appsettings set \
+--name ${this.webAppDNSName} \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--settings ${environmentalVariables}`));
+        }
+
+        await Promise.all(secondStepPromises);
+
+        await CommonUtilities.runAzCommand(
+`az webapp deployment source config-local-git \
+--name ${this.webAppDNSName} --resource-group ${resourceGroupName} \
+--query url --output tsv`, CommonUtilities.azCommandOutputs.string);
+
+        await this.deployToWebApp(developmentDeploy);
     }
 
     /**
@@ -263,7 +224,7 @@ ${this.deploymentType}`);
         await FS.emptyDirAsync(gitCloneDepotParentPath);
 
         await CommonUtilities.exec(
-                Util.format("git clone %s", gitURL),
+                Util.format(`git clone ${gitURL}`),
                     gitCloneDepotParentPath);
 
         const directoryContents = await FS.readdirAsync(gitCloneDepotPath);
@@ -271,8 +232,8 @@ ${this.deploymentType}`);
         // It's a git depo so it always has a hidden .git file, hence there
         // will be at least one file
         if (directoryContents.length > 1) {
-            // This command fails if there isn't at least one file in the
-            // directory, hence why we have the check above.
+            // This command fails if there isn't at least one file (other than
+            // .git) in the directory, hence why we have the check above.
             await CommonUtilities.exec("git rm -f -r -q *", gitCloneDepotPath);
         }
 
@@ -299,5 +260,40 @@ ${this.deploymentType}`);
 
             await CommonUtilities.exec("git push", gitCloneDepotPath);
         }
+    }
+
+    /**
+     * Deploys a development version of SleeveForArm
+     */
+    private async developDeployToWebApp(gitCloneDepotPath: string)
+                                        : Promise<void> {
+        // We want to clone node_modules in this case so we need to
+        // get rid of .gitignore
+        await FS.removeAsync(Path.join(gitCloneDepotPath, ".gitignore"));
+
+        const sleeveForArmClonePath =
+            Path.join(gitCloneDepotPath, "sleeveforarm") ;
+        await FS.ensureDirAsync(sleeveForArmClonePath);
+
+        const depotPath = Path.join(__dirname, "..");
+
+        const disposableTestFilesPath =
+            Path.join(depotPath, "disposableTestFiles");
+        const nodeModulesPath =
+            Path.join(depotPath, "node_modules");
+
+        await FS.copyAsync(depotPath, sleeveForArmClonePath, {
+            filter: (src) => (src !== disposableTestFilesPath) &&
+                             (src !== nodeModulesPath)
+        });
+
+        // Need to make the node module files just look like regular files
+        // Otherwise the WebApp Git Repo will treat sleeveforarm as a
+        // sub-module and not properly copy it over.
+        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".git"));
+
+        // Otherwise we won't check in any of the .js or other files we normally
+        // ignore.
+        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".gitignore"));
     }
 }

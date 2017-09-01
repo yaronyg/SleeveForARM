@@ -3,25 +3,77 @@ import * as fs from "fs-extra-promise";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
 import * as Winston from "winston";
+import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
-import KeyVaultInfra from "./keyvaultInfrastructure";
+import * as KeyVaultInfra from "./keyvaultInfrastructure";
 import MySqlAzure from "./mysql-azure";
+import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 
-export default class MySqlAzureInfrastructure extends MySqlAzure
-        implements IInfrastructure.IInfrastructure, IStorageResource,
-                    INamePassword {
+export interface ISqlCreateResult {
+    fullyQualifiedDomainName: string;
+    name: string;
+}
+
+export class BaseDeployMySqlAzureInfrastructure
+    implements BaseDeployStorageResource {
+    private readonly environmentVariablesValues: Array<[string, string]> = [];
+    constructor(private baseMySqlAzureInfrastructure:
+                    MySqlAzureInfrastructure,
+                createResult: ISqlCreateResult) {
+        const baseName = baseMySqlAzureInfrastructure.getBaseName();
+        const hostVariableName =
+            `${baseName}${ServiceEnvironmentUtilities.resourceHostSuffix}`;
+        const userVariableName =
+            `${baseName}${ServiceEnvironmentUtilities.resourceUserSuffix}`;
+        const passwordVariableName =
+            `${baseName}${ServiceEnvironmentUtilities.resourcePasswordSuffix}`;
+
+        this.environmentVariablesValues.push([hostVariableName,
+            createResult.fullyQualifiedDomainName]);
+        this.environmentVariablesValues.push([userVariableName,
+`${baseMySqlAzureInfrastructure.securityName}@${createResult.name}`]);
+        this.environmentVariablesValues.push([passwordVariableName,
+            baseMySqlAzureInfrastructure.password]);
+    }
+
+    /**
+     * Returns a list name/value pairs for environment
+     * variables to describe how to connect to this resource.
+     */
+    public getEnvironmentVariables(): Array<[string, string]> {
+        return this.environmentVariablesValues;
+    }
+
+    /**
+     * Creates a firewall on the storage resource with the given
+     * name for the given ipAddress.
+     */
+    public async setFirewallRule(nameOfResourceSettingRule: string,
+                                 ipAddress: string)
+        : Promise<this> {
+        await this.baseMySqlAzureInfrastructure
+                    .setFirewallRule(nameOfResourceSettingRule, ipAddress);
+        return this;
+    }
+}
+
+export class MySqlAzureInfrastructure extends MySqlAzure
+        // tslint:disable-next-line:max-line-length
+        implements IInfrastructure.IInfrastructure<BaseDeployMySqlAzureInfrastructure>,
+                    IStorageResource, INamePassword {
     public securityName: string;
     public password: string;
     public isStorageResource: boolean = true;
     public mySqlAzureFullName: string;
-    private hostVariableName: string;
-    private userVariableName: string;
-    private passwordVariableName: string;
+    private readonly promiseGate = new PromiseGate();
+    public getBaseName() {
+        return this.baseName;
+    }
     public initialize(resource: Resource.Resource | null,
                       targetDirectoryPath: string): this {
         super.initialize(resource, targetDirectoryPath);
@@ -65,99 +117,107 @@ export default class MySqlAzureInfrastructure extends MySqlAzure
         // BUGBUG: To meet the symbol requirement for now.
         this.password += "$";
 
-        this.hostVariableName =
-`$${this.baseName}${ServiceEnvironmentUtilities.resourceHostSuffix}`;
-        this.userVariableName =
-`$${this.baseName}${ServiceEnvironmentUtilities.resourceUserSuffix}`;
-        this.passwordVariableName =
-`$${this.baseName}${ServiceEnvironmentUtilities.resourcePasswordSuffix}`;
-
         return this;
     }
 
-    public async deployResource(): Promise<IInfrastructure.IDeployResponse> {
-        let result = "";
-        const resourceGroupName = this.resourceGroup.resourceGroupName;
-        const mySqlServerCreateVariableName =
-            `$${this.baseName}ServerCreate`;
-        result += CommonUtilities.appendErrorCheck(
-`${mySqlServerCreateVariableName} = az mysql server create \
---resource-group ${resourceGroupName} --name ${this.mySqlAzureFullName} \
---admin-user ${this.securityName} --admin-password '${this.password}' \
---ssl-enforcement Enabled | ConvertFrom-Json \n`);
+    public async deployResource(): Promise<this> {
+        try {
+            await this.resourceGroup.getBaseDeployClassInstance();
+            const promisesToWaitFor = [];
+            const resourceGroupName = this.resourceGroup.resourceGroupName;
+            const createResult = await CommonUtilities.runAzCommand(
+    `az mysql server create \
+    --resource-group ${resourceGroupName} --name ${this.mySqlAzureFullName} \
+    --admin-user ${this.securityName} --admin-password ${this.password} \
+    --ssl-enforcement Enabled`, CommonUtilities.azCommandOutputs.json);
+            this.promiseGate.openGateSuccess(
+                new BaseDeployMySqlAzureInfrastructure(this, createResult));
 
-        const keyVault =
-            CommonUtilities
-                .findGlobalDefaultResourceByType(this.resourcesInEnvironment,
-                                                KeyVaultInfra) as KeyVaultInfra;
-        result +=
-            keyVault.setSecretViaPowershell(this.securityName, this.password);
+            const keyVault =
+                CommonUtilities
+                    .findGlobalDefaultResourceByType(
+                        this.resourcesInEnvironment,
+KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 
-        result += `${this.hostVariableName} = \
-${mySqlServerCreateVariableName}.fullyQualifiedDomainName\n`;
+            promisesToWaitFor.push(
+                keyVault
+                    .getBaseDeployClassInstance()
+                    .then((keyVaultBaseClass) => {
+                        return keyVaultBaseClass
+                            .setSecret(this.securityName, this.password);
+                    }));
 
-        result += `${this.userVariableName} = \
-"${this.securityName}@" + ${mySqlServerCreateVariableName}.name\n`;
+            if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
+                promisesToWaitFor.push(this.setFirewallAllowAll());
+            }
 
-        result += `${this.passwordVariableName} = '${this.password}'\n`;
+            const scriptPaths: string [] = [];
+            for (const checkScriptPath of
+                    this.pathToMySqlInitializationScripts) {
+                const scriptPath =
+                    Path.isAbsolute(checkScriptPath) ? checkScriptPath :
+                        Path.join(this.targetDirectoryPath, checkScriptPath);
+                if (await fs.existsAsync(scriptPath) === false) {
+                    throw new Error(`Submitted mySql initialization script, \
+    located at ${scriptPath} for ${this.baseName} does not exist.`);
+                }
+                scriptPaths.push(scriptPath);
+            }
 
-        result += this.getFirewallFunction();
+            if (scriptPaths.length !== 0) {
+                let firewallRuleName;
+                try {
+                    firewallRuleName = await this.setUpFirewallForSqlScript();
 
+                    for (const scriptPath of scriptPaths) {
+                        promisesToWaitFor.push(this.runMySqlScript(scriptPath));
+                    }
+                } finally {
+                    if (this.deploymentType === Resource.DeployType.Production
+                            && firewallRuleName) {
+                        await this.removeFirewallRule(firewallRuleName);
+                    }
+                }
+            }
+
+            await Promise.all(promisesToWaitFor);
+            return this;
+        } catch (err) {
+            if (!this.promiseGate.isGateOpen) {
+                this.promiseGate.openGateError(err);
+            }
+            throw err;
+        }
+    }
+
+    public getBaseDeployClassInstance():
+        Promise<BaseDeployMySqlAzureInfrastructure> {
+        return this.promiseGate.promise.then(
+            function(baseClass: BaseDeployMySqlAzureInfrastructure) {
+                return baseClass;
+            }
+        );
+    }
+
+    public async setUpFirewallForSqlScript() {
         if (this.deploymentType === Resource.DeployType.LocalDevelopment) {
-            result += this.setFirewallAllowAll();
+            return Promise.resolve();
         }
 
-        const scriptPaths: string [] = [];
-        for (const checkScriptPath of this.pathToMySqlInitializationScripts) {
-            const scriptPath =
-                Path.isAbsolute(checkScriptPath) ? checkScriptPath :
-                    Path.join(this.targetDirectoryPath, checkScriptPath);
-            if (await fs.existsAsync(scriptPath) === false) {
-                throw new Error(`Submitted mySql initialization script, \
-located at ${scriptPath} for ${this.baseName} does not exist.`);
-            }
-            scriptPaths.push(scriptPath);
-        }
-
-        const afterScriptRunFunction = async () => {
-            for (const scriptPath of scriptPaths) {
-                await this.runMySqlScript(scriptPath);
-            }
-        };
-
-        return {
-            async functionToCallAfterScriptRuns() {
-                await afterScriptRunFunction();
-            },
-            powerShellScript: result
-        };
-    }
-
-    public getPowershellConnectionVariableNames(): string[] {
-        return [this.hostVariableName, this.userVariableName,
-                this.passwordVariableName];
-    }
-
-    public getPowershellFirewallFunctionName(): string {
-        return `${this.baseName}SetFirewallRules`;
-    }
-
-    public async runMySqlScript(pathToScript: string) {
-        let devIp: string;
-        const firewallRuleName = Crypto.randomBytes(12).toString("hex");
         const initSqlCommand =
 `mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
 -u ${this.securityName}@${this.mySqlAzureFullName} \
--p${this.password} -v < "${pathToScript}"`;
+-p${this.password} -v`;
+        let devIp: string = "";
+        const firewallRuleName = Crypto.randomBytes(12).toString("hex");
         const re =
             /Client with IP address (.*) is not allowed to access the server/;
         try {
             await CommonUtilities.exec(initSqlCommand,
                                         this.targetDirectoryPath);
             Winston.debug("The request that was supposed to fail to talk to \
-mySQl so we could find out what IP address Azure mySQL sees actually \
-succeeded!");
-            return;
+    mySQl so we could find out what IP address Azure mySQL sees actually \
+    succeeded!");
         } catch (err) {
             const result = err.message.match(re);
             if (result.length !== 2) {
@@ -166,60 +226,50 @@ succeeded!");
             devIp = result[1];
         }
 
-        try {
-            if (this.deploymentType === Resource.DeployType.Production) {
-                await this.setFirewallRule(firewallRuleName, devIp);
-            }
-            CommonUtilities.retryAfterFailure(async () => {
-                await CommonUtilities.exec(initSqlCommand,
-                                           this.targetDirectoryPath);
-            }, 5);
-        } finally {
-            if (this.deploymentType === Resource.DeployType.Production) {
-                await this.removeFirewallRules(firewallRuleName);
-            }
+        if (devIp === "") {
+            throw new Error("Call to get our IP failed!");
         }
 
+        await this.setFirewallRule(firewallRuleName, devIp);
+        return firewallRuleName;
     }
-    private getFirewallFunction() {
-        const firewallCommand = CommonUtilities.appendErrorCheck(
+    public async runMySqlScript(pathToScript: string) {
+        const initSqlCommand =
+`mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
+-u ${this.securityName}@${this.mySqlAzureFullName} \
+-p${this.password} -v < "${pathToScript}"`;
+        await CommonUtilities.retryAfterFailure(async () => {
+            await CommonUtilities.exec(initSqlCommand,
+                                    this.targetDirectoryPath);
+        }, 5);
+    }
+
+    public setFirewallRule(nameOfResourceSettingRule: string,
+                           ipAddress: string) {
+        const ipNoDots = ipAddress.replace(/\./g, "");
+        const ruleName = `${nameOfResourceSettingRule}${ipNoDots}`
+        return CommonUtilities.runAzCommand(
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server ${this.mySqlAzureFullName} \
---name "$name" --start-ip-address $_ \
---end-ip-address $_\n`, 4);
-
-        return `function ${this.getPowershellFirewallFunctionName()} {\n\
-  $args[0] | ForEach-Object {\n\
-    $name = "${this.baseName}" + ($_ -replace '[\.]', '')\n\
-    ${firewallCommand}\
-  }\n\
-}\n`;
+--name ${ruleName} --start-ip-address ${ipAddress} \
+--end-ip-address ${ipAddress}`);
     }
 
     private setFirewallAllowAll() {
-        return CommonUtilities.appendErrorCheck(
+        return CommonUtilities.runAzCommand(
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server ${this.mySqlAzureFullName} \
---name "${this.baseName}AllAccess" --start-ip-address "0.0.0.0" \
---end-ip-address "255.255.255.255"\n`);
+--name ${this.baseName}AllAccess --start-ip-address 0.0.0.0 \
+--end-ip-address 255.255.255.255`);
     }
 
-    private async setFirewallRule(name: string, ipAddress: string) {
-        return await CommonUtilities.runAzCommand(
-`az mysql server firewall-rule create \
---resource-group ${this.resourceGroup.resourceGroupName} \
---server ${this.mySqlAzureFullName} \
---name "${name}" --start-ip-address "${ipAddress}" \
---end-ip-address "${ipAddress}"`);
-    }
-
-    private async removeFirewallRules(name: string) {
-        return await CommonUtilities.runAzCommand(
+    private removeFirewallRule(name: string) {
+        return CommonUtilities.runAzCommand(
 `az mysql server firewall-rule delete \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server-name ${this.mySqlAzureFullName} \
---name "${name}" --yes`, CommonUtilities.azCommandOutputs.string);
+--name ${name} --yes`, CommonUtilities.azCommandOutputs.string);
     }
 }

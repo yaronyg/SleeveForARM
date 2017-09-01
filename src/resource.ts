@@ -2,11 +2,6 @@ import * as fs from "fs-extra-promise";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 
-export interface IDeployResponse {
-    functionToCallAfterScriptRuns: () => Promise<void>;
-    powerShellScript: string;
-}
-
 /**
  * We use the first character of the string value
  * as part of our names so make sure each type has a

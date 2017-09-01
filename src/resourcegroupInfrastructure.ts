@@ -1,12 +1,23 @@
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
+import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
-export default class ResourceGroupInfrastructure extends ResourceGroup
-    implements IInfrastructure.IInfrastructure {
+export class BaseDeployResourceGroupInfrastructure {
+    constructor(private baseGroup: ResourceGroupInfrastructure) {}
+
+    public get deployedResourceGroupName() {
+        return this.baseGroup.resourceGroupName;
+    }
+}
+
+export class ResourceGroupInfrastructure extends ResourceGroup
+    // tslint:disable-next-line:max-line-length
+    implements IInfrastructure.IInfrastructure<BaseDeployResourceGroupInfrastructure> {
     private location: string;
     private resourceGroupNameProperty: string;
+    private readonly promiseGate = new PromiseGate();
 
     public get resourceGroupName() {
         return this.resourceGroupNameProperty;
@@ -25,10 +36,12 @@ export default class ResourceGroupInfrastructure extends ResourceGroup
         }
         return this;
     }
+
     public async setup(): Promise<void> {
         return await ResourceGroup.internalSetup(__filename,
                 this.targetDirectoryPath);
     }
+
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
                     : Promise<this> {
@@ -50,14 +63,30 @@ export default class ResourceGroupInfrastructure extends ResourceGroup
 
         return this;
     }
-    public async deployResource(): Promise<IInfrastructure.IDeployResponse> {
-        // tslint:disable-next-line:max-line-length
-        return {
-            functionToCallAfterScriptRuns: async () => { return; },
-            // tslint:disable-next-line:max-line-length
-            powerShellScript: CommonUtilities.appendErrorCheck(
+
+    public async deployResource(): Promise<this> {
+        try {
+            if (this.promiseGate.isGateOpen) {
+                throw new Error("Deploy was already called");
+            }
+            await CommonUtilities.runAzCommand(
 `az group create --name ${this.resourceGroupName} \
---location \"${this.location}\"\n`)
-        };
+--location "${this.location}"`);
+
+            this.promiseGate.openGateSuccess(
+                new BaseDeployResourceGroupInfrastructure(this));
+            return this;
+        } catch (err) {
+            this.promiseGate.openGateError(err);
+            throw err;
+        }
+    }
+
+    public getBaseDeployClassInstance():
+            Promise<BaseDeployResourceGroupInfrastructure> {
+        return this.promiseGate.promise.then(
+            function(baseClass: BaseDeployResourceGroupInfrastructure) {
+                return baseClass;
+            });
     }
 }

@@ -1,6 +1,5 @@
 import * as child_process from "child_process";
 import * as fs from "fs-extra-promise";
-import * as HTTP from "http";
 import * as jsonCycle from "json-cycle";
 import * as Path from "path";
 import * as tmp from "tmp-promise";
@@ -8,9 +7,9 @@ import { format, promisify } from "util";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
 import IGlobalDefault from "./IGlobalDefault";
+import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import * as Resource from "./resource";
-import ResourceGroup from "./resourcegroup";
 
 const childProcessExec = promisify(child_process.exec);
 
@@ -21,6 +20,7 @@ export enum azCommandOutputs {
 
 export async function exec(command: string, cwd: string) {
     try {
+        Winston.debug(`exec about to run command ${command} in cwd ${cwd}`);
         const result = await childProcessExec(command, { cwd });
         Winston.debug("exec ran with command %s in directory %s and got \
                         output %j", command, cwd, jsonCycle.decycle(result));
@@ -35,6 +35,7 @@ stdout %s\nstderr %s\n", command, cwd, err, err.stdout, err.stderr);
 
 export async function runExecFailOnStderr(command: string, skipLog = false) {
     try {
+        Winston.debug(`runExecFailOnStderr about to run command ${command}`);
         const commandResult = await childProcessExec(command);
         if (commandResult.stderr) {
             throw new Error(commandResult.stderr);
@@ -84,6 +85,7 @@ with code ${code}.`;
 export async function runAzCommand(command: string,
                                    output = azCommandOutputs.json)
                                    : Promise<any | string> {
+    Winston.debug(`About to exec command ${command}`);
     const stdout = await runExecFailOnStderr(command, true);
     switch (output) {
         case azCommandOutputs.json: {
@@ -124,14 +126,16 @@ export async function executeOnSleeveResources(parentPath: string,
                                                processFunction:
                                 (path: string) => Promise<void>) {
     const directoryContents = await fs.readdirAsync(parentPath);
+    const promisesToWaitFor = [];
     for (const childFileName of directoryContents) {
         const candidatePath = Path.join(parentPath, childFileName);
         const isDirectory = await fs.isDirectoryAsync(candidatePath);
         const sleevePath = Path.join(candidatePath, "sleeve.js");
         if (isDirectory && await fs.existsAsync(sleevePath)) {
-            await processFunction(candidatePath);
+            promisesToWaitFor.push(processFunction(candidatePath));
         }
     }
+    return Promise.all(promisesToWaitFor);
 }
 
 /**
@@ -149,6 +153,16 @@ export function isIStorageResource(object: any): object is IStorageResource {
     return (object as IStorageResource).isStorageResource !== undefined;
 }
 
+export function isIInfrastructure(object: any)
+        : object is IInfrastructure.IInfrastructure<any> {
+    return (object as IInfrastructure.IInfrastructure<any>)
+        .initialize !== undefined;
+}
+
+export function isResource(object: any): object is Resource.Resource {
+    return object instanceof Resource.Resource;
+}
+
 export function findGlobalDefaultResourceByType(resources: Resource.Resource[],
                                                 resourceType: any)
                                                  : Resource.Resource {
@@ -163,12 +177,16 @@ ${resources}`);
     return resourceFound;
 }
 
-export function findResourcesByInterface<T>(
-    resources: Resource.Resource[],
-    interfaceCheck: (object: any) => object is T): T[] {
-    const passingResource: T[] = [];
+export function findInfraResourcesByInterface<T>(
+    resources: Resource.Resource[] | Array<IInfrastructure.IInfrastructure<any>>
+        | IStorageResource[],
+    interfaceCheck: (object: any) => object is T)
+        : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> {
+    const passingResource
+    : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> = [];
     for (const resource of resources) {
-        if (interfaceCheck(resource)) {
+        if (interfaceCheck(resource) && isResource(resource)
+            && isIInfrastructure(resource)) {
             passingResource.push(resource);
         }
     }
@@ -179,19 +197,6 @@ export const scratchDirectoryName = ".sleeve";
 
 export function localScratchDirectory(targetDirectoryPath: string) {
   return Path.join(targetDirectoryPath, scratchDirectoryName);
-}
-
-/**
- * Appends a check for exe failure to a powershell script
- * command call.
- * @param command We assume the command ends in \n
- * @param indent How many spaces to indent the command
- */
-export function appendErrorCheck(command: string, indent: number = 0) {
-    const indentSpaces = Array(indent + 1).join(" ");
-    return command +
-// tslint:disable-next-line:max-line-length
-`${indentSpaces}if ($LastExitCode -ne 0) { throw \"Command \" + (h)[-1].CommandLine + \" Failed\" }\n`;
 }
 
 export async function wait(millisecondsToWait: number) {
@@ -224,6 +229,6 @@ export async function retryAfterFailure(command: () => Promise<void>,
  * check instead. Note that this is NOT a substitute for
  * instanceof since I don't check inheritance.
  */
-export function isClass(obj: object, classObj: object): boolean {
+export function isClass(obj: object, classObj: any): boolean {
     return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }

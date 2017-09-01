@@ -5,12 +5,13 @@ import * as Winston from "winston";
 export const testingDirParentPath = Path.join(__dirname, "..",
                                         "disposableTestFiles");
 
-function generateLogPath(mochaThis) {
+function generateLogPath(mochaThis: Mocha.IBeforeAndAfterContext) {
     return Path.join(testingDirParentPath, mochaThis.currentTest.parent.title,
                      mochaThis.currentTest.title);
 }
 
-export async function setupMochaTestLogging(mochaThis, emptyDir = true)
+export async function setupMochaTestLogging(
+    mochaThis: Mocha.IBeforeAndAfterContext, emptyDir = true)
         : Promise<[string, string]> {
     const testingDirFullPath = generateLogPath(mochaThis);
     if (emptyDir) {

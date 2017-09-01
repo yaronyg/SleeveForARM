@@ -1,22 +1,20 @@
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
-import * as Util from "util";
 import * as Winston from "winston";
-import * as Yargs from "yargs";
 import * as CommonUtilities from "./common-utilities";
-import IGlobalDefault from "./IGlobalDefault";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
-import KeyVaultInfrastructure from "./keyvaultInfrastructure";
+import * as KeyVaultInfrastructure from "./keyvaultInfrastructure";
 import MySqlAzure from "./mysql-azure";
-import MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
+import * as MySqlAzureInfrastructure from "./mysql-azureInfrastructure";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
-import ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
+import * as ResourceGroupInfrastructure from "./resourcegroupInfrastructure";
 import WebappNodeAzure from "./webapp-node-azure";
-import WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
+// tslint:disable-next-line:max-line-length
+import * as WebappNodeAzureInfrastructure from "./webapp-node-azureInfrastructure";
 
-type InfraResourceType = IInfrastructure.IInfrastructure &
+export type InfraResourceType = IInfrastructure.IInfrastructure<any> &
                          Resource.Resource;
 
 function createInfraResource(resource: Resource.Resource,
@@ -25,16 +23,18 @@ function createInfraResource(resource: Resource.Resource,
   let infraResource: InfraResourceType | null = null;
 
   if (CommonUtilities.isClass(resource, ResourceGroup)) {
-    infraResource = new ResourceGroupInfrastructure();
+    infraResource =
+    new ResourceGroupInfrastructure.ResourceGroupInfrastructure();
   }
   if (CommonUtilities.isClass(resource, KeyVault)) {
-    infraResource = new KeyVaultInfrastructure();
+    infraResource = new KeyVaultInfrastructure.KeyVaultInfrastructure();
   }
   if (CommonUtilities.isClass(resource, WebappNodeAzure)) {
-    infraResource = new WebappNodeAzureInfrastructure();
+    infraResource =
+      new WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure();
   }
   if (CommonUtilities.isClass(resource, MySqlAzure)) {
-    infraResource = new MySqlAzureInfrastructure();
+    infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
   }
   if (infraResource === null) {
     throw new Error("Unrecognized resource type!");
@@ -51,14 +51,15 @@ export async function setup(rootPath: string, serviceName: string,
       process.exit(-1);
     }
     await fs.ensureDirAsync(targetPath);
-    let infraResource: IInfrastructure.IInfrastructure;
+    let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {
-        infraResource = new MySqlAzureInfrastructure();
+        infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
         break;
       }
       case Resource.ResourcesWeSupportSettingUp.WebAppNode: {
-        infraResource = new WebappNodeAzureInfrastructure();
+        infraResource =
+          new WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure();
         break;
       }
       default: {
@@ -73,11 +74,7 @@ export async function deployResources(
                           rootOfDeploymentPath: string,
                           deploymentType: Resource.DeployType,
                           developmentDeploy = false)
-                          : Promise<IInfrastructure.IInfrastructure[]> {
-    const globalDefaultResourcesToHydrate: InfraResourceType[] = [];
-    const storageResourcesToHydrate: InfraResourceType[] = [];
-    const notGlobalDefaultResourcesToHydrate
-      : InfraResourceType[] = [];
+                          : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
     const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
     if (!(fs.existsSync(rootSleevePath))) {
@@ -99,15 +96,8 @@ this is not a properly configured project");
         const sleevePath = Path.join(candidatePath, "sleeve.js");
         const resource = require(sleevePath);
         const infraResource = createInfraResource(resource, candidatePath);
-        if (CommonUtilities.isIGlobalDefault(infraResource)) {
-          globalDefaultResourcesToHydrate.push(infraResource);
-          return;
-        }
-        if (CommonUtilities.isIStorageResource(infraResource)) {
-          storageResourcesToHydrate.push(infraResource);
-          return;
-        }
-        notGlobalDefaultResourcesToHydrate.push(infraResource);
+        resourcesInEnvironment.push(
+          await infraResource.hydrate(resourcesInEnvironment, deploymentType));
       });
 
     if (resourcesInEnvironment.length === 0) {
@@ -115,38 +105,23 @@ this is not a properly configured project");
       process.exit(-1);
     }
 
-    for (const resourceArray of
-      [globalDefaultResourcesToHydrate, storageResourcesToHydrate,
-        notGlobalDefaultResourcesToHydrate]) {
-      for (const infraResource of resourceArray) {
-        const resource =
-          await infraResource.hydrate(resourcesInEnvironment, deploymentType);
-        resourcesInEnvironment.push(resource);
-      }
-    }
-
-    let scriptToRun = "$ErrorActionPreference = \"Stop\"\n";
-    const functionsToCallAfterScriptRuns = [];
+    const promisesToWaitFor = [];
     for (const resource of resourcesInEnvironment) {
-      const deployResult = await resource.deployResource(developmentDeploy);
-      scriptToRun += deployResult.powerShellScript;
-      functionsToCallAfterScriptRuns
-        .push(deployResult.functionToCallAfterScriptRuns);
+      promisesToWaitFor.push(resource.deployResource(developmentDeploy));
     }
 
-    await CommonUtilities.runPowerShellScript(scriptToRun);
-
-    for (const functionToCall of functionsToCallAfterScriptRuns) {
-      await functionToCall();
-    }
+    await Promise.all(promisesToWaitFor);
 
     if (deploymentType === Resource.DeployType.Production) {
       for (const resource of resourcesInEnvironment) {
-        if (resource instanceof WebappNodeAzureInfrastructure) {
-          const url =
-            await (resource as WebappNodeAzureInfrastructure).getDeployedURL();
+        if (resource instanceof
+            WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure) {
+          const baseDeployWebApp =
+            // tslint:disable-next-line:max-line-length
+            await (resource as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure)
+              .getBaseDeployClassInstance();
           console.log(
-            `Web app is available at ${url}`);
+`Web app is available at ${await baseDeployWebApp.getDeployedURL()}`);
         }
       }
     }

@@ -2,15 +2,11 @@ import { expect } from "chai";
 import * as fs from "fs-extra-promise";
 import * as Path from "path";
 import * as Request from "request-promise-native";
-import * as Winston from "winston";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
 import * as Resource from "../src/resource";
-import ResourceGroup from "../src/resourcegroup";
-import ResourceGroupInfrastructure from "../src/resourcegroupInfrastructure";
-import WebappNodeAzure from "../src/webapp-node-azure";
 // tslint:disable-next-line:max-line-length
-import WebappNodeAzureInfrastructure from "../src/webapp-node-azureinfrastructure";
+import * as WebappNodeAzureInfrastructure from "../src/webapp-node-azureinfrastructure";
 import * as TestUtilities from "./testUtilities";
 
 describe("Web app Node Azure", () => {
@@ -59,8 +55,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         try {
             await CommonUtilities.exec(
-                "tsc index.ts --target es6 --module commonjs \
-    --moduleResolution node > NUL", fooPath);
+"tsc index.ts --target es6 --module commonjs --moduleResolution node > NUL"
+, fooPath);
         } catch (err) {
             // TSC will fail because of spurious type failures, we can
             // ignore. If there is a real problem the next script will
@@ -69,46 +65,56 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
-        await CliUtilities.deployResources(webAppSamplePath, deploymentType,
+        const resourcesInEnvironment =
+         await CliUtilities.deployResources(webAppSamplePath, deploymentType,
                                            true);
 
-        const resourceGroup: ResourceGroup =
-            require(Path.join(webAppSamplePath, "sleeve.js"));
-        const resourceGroupInfra: ResourceGroupInfrastructure =
-            new ResourceGroupInfrastructure();
-        resourceGroupInfra.initialize(resourceGroup, webAppSamplePath);
-        await resourceGroupInfra.hydrate([], deploymentType);
+        const webApp = resourcesInEnvironment.find((resource) =>
+            CommonUtilities.isClass(resource,
+                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure));
 
-        const webAppNode: WebappNodeAzure =
-            require(Path.join(webAppSamplePath, "foo", "sleeve.js"));
-        const webAppNodeInfra: WebappNodeAzureInfrastructure =
-            new WebappNodeAzureInfrastructure();
-        webAppNodeInfra.initialize(webAppNode,
-            Path.join(webAppSamplePath, "foo"));
-        await webAppNodeInfra.hydrate([resourceGroupInfra], deploymentType);
-        const deployedURL = await webAppNodeInfra.getDeployedURL();
+        if (webApp === undefined) {
+            throw new Error("We don't have a webApp in our results!");
+        }
+
+        const baseDeployWebApp = await webApp.getBaseDeployClassInstance();
+
+        const deployedURL = await baseDeployWebApp.getDeployedURL();
         await getTheResult(deployedURL);
     });
 
+    async function waitAndTryAgain(url: string, resolve: () => void,
+                                   reject: (err: any) => void) {
+        setTimeout(async function() {
+            try {
+                await getTheResult(url);
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        }, 5000);
+    }
+
     async function getTheResult(url: string) {
         return new Promise(async function(resolve, reject) {
-            const getResult = await Request.get(url);
-            if (getResult === "Not Set!") {
-                setTimeout(async function() {
+            try {
+                const getResult = await Request.get(url);
+                if (getResult === "Not Set!") {
+                    waitAndTryAgain(url, resolve, reject);
+                } else {
                     try {
-                        await getTheResult(url);
+                        expect(getResult).equals("A Name");
                         resolve();
                     } catch (err) {
                         reject(err);
                     }
-                }, 5000);
-            } else {
-                try {
-                    expect(getResult).equals("A Name");
-                    resolve();
-                } catch (err) {
-                    reject(err);
                 }
+            } catch (err) {
+                if (err.error.errno === "ECONNREFUSED") {
+                    // We made the request too quickly
+                    waitAndTryAgain(url, resolve, reject);
+                }
+                throw err;
             }
         });
     }
@@ -140,11 +146,11 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         const fileToCopy = Path.join(__dirname, "..", "testAssets",
             "index.ts");
         await fs.copyAsync(fileToCopy, Path.join(fooPath, "index.ts"),
-            { overwrite: true });
+                            { overwrite: true });
         try {
             await CommonUtilities.exec(
-                "tsc index.ts --target es6 --module commonjs \
---moduleResolution node > NUL", fooPath);
+"tsc index.ts --target es6 --module commonjs --moduleResolution node > NUL"
+, fooPath);
         } catch (err) {
             // TSC will fail because of spurious type failures, we can
             // ignore. If there is a real problem the next script will
