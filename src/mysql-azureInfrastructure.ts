@@ -53,10 +53,12 @@ export class BaseDeployMySqlAzureInfrastructure
      * Creates a firewall on the storage resource with the given
      * name for the given ipAddress.
      */
-    public async setFirewallRule(ruleName: string, ipAddress: string)
+    public async setFirewallRule(nameOfResourceSettingRule: string,
+                                 ipAddress: string)
         : Promise<this> {
-        return this.baseMySqlAzureInfrastructure
-                    .setFirewallRule(ruleName, ipAddress);
+        await this.baseMySqlAzureInfrastructure
+                    .setFirewallRule(nameOfResourceSettingRule, ipAddress);
+        return this;
     }
 }
 
@@ -162,19 +164,22 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
                 scriptPaths.push(scriptPath);
             }
 
-            let firewallRuleName;
-            try {
-                firewallRuleName = await this.setUpFirewallForSqlScript();
-            } finally {
-                if (this.deploymentType === Resource.DeployType.Production
-                        && firewallRuleName) {
-                    await this.removeFirewallRule(firewallRuleName);
+            if (scriptPaths.length !== 0) {
+                let firewallRuleName;
+                try {
+                    firewallRuleName = await this.setUpFirewallForSqlScript();
+
+                    for (const scriptPath of scriptPaths) {
+                        promisesToWaitFor.push(this.runMySqlScript(scriptPath));
+                    }
+                } finally {
+                    if (this.deploymentType === Resource.DeployType.Production
+                            && firewallRuleName) {
+                        await this.removeFirewallRule(firewallRuleName);
+                    }
                 }
             }
 
-            for (const scriptPath of scriptPaths) {
-                promisesToWaitFor.push(this.runMySqlScript(scriptPath));
-            }
             await Promise.all(promisesToWaitFor);
             return this;
         } catch (err) {
@@ -239,13 +244,16 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
         }, 5);
     }
 
-    public setFirewallRule(name: string, ipAddress: string) {
+    public setFirewallRule(nameOfResourceSettingRule: string,
+                           ipAddress: string) {
+        const ipNoDots = ipAddress.replace(/\./g, "");
+        const ruleName = `${nameOfResourceSettingRule}${ipNoDots}`
         return CommonUtilities.runAzCommand(
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server ${this.mySqlAzureFullName} \
---name "${name}" --start-ip-address "${ipAddress}" \
---end-ip-address "${ipAddress}"`);
+--name ${ruleName} --start-ip-address ${ipAddress} \
+--end-ip-address ${ipAddress}`);
     }
 
     private setFirewallAllowAll() {
@@ -253,8 +261,8 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server ${this.mySqlAzureFullName} \
---name "${this.baseName}AllAccess" --start-ip-address "0.0.0.0" \
---end-ip-address "255.255.255.255"`);
+--name ${this.baseName}AllAccess --start-ip-address 0.0.0.0 \
+--end-ip-address 255.255.255.255`);
     }
 
     private removeFirewallRule(name: string) {
@@ -262,6 +270,6 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 `az mysql server firewall-rule delete \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server-name ${this.mySqlAzureFullName} \
---name "${name}" --yes`, CommonUtilities.azCommandOutputs.string);
+--name ${name} --yes`, CommonUtilities.azCommandOutputs.string);
     }
 }

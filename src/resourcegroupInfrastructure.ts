@@ -71,7 +71,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
             }
             await CommonUtilities.runAzCommand(
 `az group create --name ${this.resourceGroupName} \
---location \"${this.location}\"`);
+--location "${this.location}"`);
 
             this.promiseGate.openGateSuccess(
                 new BaseDeployResourceGroupInfrastructure(this));

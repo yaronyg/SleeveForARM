@@ -20,6 +20,7 @@ export enum azCommandOutputs {
 
 export async function exec(command: string, cwd: string) {
     try {
+        Winston.debug(`exec about to run command ${command} in cwd ${cwd}`);
         const result = await childProcessExec(command, { cwd });
         Winston.debug("exec ran with command %s in directory %s and got \
                         output %j", command, cwd, jsonCycle.decycle(result));
@@ -34,6 +35,7 @@ stdout %s\nstderr %s\n", command, cwd, err, err.stdout, err.stderr);
 
 export async function runExecFailOnStderr(command: string, skipLog = false) {
     try {
+        Winston.debug(`runExecFailOnStderr about to run command ${command}`);
         const commandResult = await childProcessExec(command);
         if (commandResult.stderr) {
             throw new Error(commandResult.stderr);
@@ -83,6 +85,7 @@ with code ${code}.`;
 export async function runAzCommand(command: string,
                                    output = azCommandOutputs.json)
                                    : Promise<any | string> {
+    Winston.debug(`About to exec command ${command}`);
     const stdout = await runExecFailOnStderr(command, true);
     switch (output) {
         case azCommandOutputs.json: {
@@ -194,19 +197,6 @@ export const scratchDirectoryName = ".sleeve";
 
 export function localScratchDirectory(targetDirectoryPath: string) {
   return Path.join(targetDirectoryPath, scratchDirectoryName);
-}
-
-/**
- * Appends a check for exe failure to a powershell script
- * command call.
- * @param command We assume the command ends in \n
- * @param indent How many spaces to indent the command
- */
-export function appendErrorCheck(command: string, indent: number = 0) {
-    const indentSpaces = Array(indent + 1).join(" ");
-    return command +
-// tslint:disable-next-line:max-line-length
-`${indentSpaces}if ($LastExitCode -ne 0) { throw \"Command \" + (h)[-1].CommandLine + \" Failed\" }\n`;
 }
 
 export async function wait(millisecondsToWait: number) {

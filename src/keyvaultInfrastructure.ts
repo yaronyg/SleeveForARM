@@ -50,8 +50,8 @@ export class KeyVaultInfrastructure
         try {
             await this.resourceGroup.getBaseDeployClassInstance();
             await CommonUtilities.runAzCommand(
-`az keyvault create --name \"${this.keyVaultFullName}\" \
---resource-group \"${this.resourceGroup.resourceGroupName}\" \
+`az keyvault create --name ${this.keyVaultFullName} \
+--resource-group ${this.resourceGroup.resourceGroupName} \
 --enable-soft-delete ${this.isEnabledForSoftDelete} \
 --enabled-for-deployment ${this.isEnabledForDeployment} \
 --enabled-for-disk-encryption ${this.isEnabledForDiskEncryption} \

@@ -80,10 +80,13 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                 .push(storageResource.getBaseDeployClassInstance());
         }
 
-        await this.deploymentType === Resource.DeployType.Production ?
+        await (this.deploymentType === Resource.DeployType.Production ?
             this.deployToProduction(developmentDeploy,
                 storagePromisesToWaitFor) :
-            this.deployToDev(storagePromisesToWaitFor);
+            this.deployToDev(storagePromisesToWaitFor));
+
+        this.promiseGate
+            .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
 
         return this;
     }
@@ -121,21 +124,22 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         }
     }
 
-    private async deployToProduction(developmentDeploy: boolean,
-                                     storagePromisesToWaitFor
-                 : Array<Promise<BaseDeployStorageResource>>) {
+    private async deployToProduction(
+        developmentDeploy: boolean,
+        storagePromisesToWaitFor
+            : Array<Promise<BaseDeployStorageResource>>) {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const webPromise =
             CommonUtilities.runAzCommand(
 `az appservice plan create \
---name "${this.webAppServicePlanName}" \
---resource-group "${resourceGroupName}" --sku FREE`)
+--name ${this.webAppServicePlanName} \
+--resource-group ${resourceGroupName} --sku FREE`)
             .then(() => {
                 return CommonUtilities.runAzCommand(
 `az webapp create \
---name "${this.webAppDNSName}" \
---resource-group "${resourceGroupName}" --plan "${this.webAppServicePlanName}" \
-| ConvertFrom-Json`, CommonUtilities.azCommandOutputs.json);
+--name ${this.webAppDNSName} \
+--resource-group ${resourceGroupName} \
+--plan ${this.webAppServicePlanName}`, CommonUtilities.azCommandOutputs.json);
         });
 
         const webAppCreateResult = await webPromise;
@@ -151,7 +155,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             webAppIPs.forEach((ipAddr) => {
                 secondStepPromises.push(
                     baseStorageResource
-                        .setFirewallRule(ipAddr, ipAddr));
+                        .setFirewallRule(this.baseName, ipAddr));
             });
 
             environmentVariablesArray =
@@ -177,8 +181,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await CommonUtilities.runAzCommand(
 `az webapp deployment source config-local-git \
---name "${this.webAppDNSName}" --resource-group "${resourceGroupName}" \
---query url --output tsv`);
+--name ${this.webAppDNSName} --resource-group ${resourceGroupName} \
+--query url --output tsv`, CommonUtilities.azCommandOutputs.string);
 
         await this.deployToWebApp(developmentDeploy);
     }

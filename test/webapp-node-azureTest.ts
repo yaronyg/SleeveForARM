@@ -53,9 +53,15 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                 { overwrite: true});
         }
 
-        await CommonUtilities.exec(
-            "tsc index.ts --target es6 --module commonjs \
---moduleResolution node > NUL", fooPath);
+        try {
+            await CommonUtilities.exec(
+"tsc index.ts --target es6 --module commonjs --moduleResolution node > NUL"
+, fooPath);
+        } catch (err) {
+            // TSC will fail because of spurious type failures, we can
+            // ignore. If there is a real problem the next script will
+            // fail.
+        }
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
@@ -64,7 +70,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                                            true);
 
         const webApp = resourcesInEnvironment.find((resource) =>
-            CommonUtilities.isClass(resource, WebappNodeAzureInfrastructure));
+            CommonUtilities.isClass(resource,
+                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure));
 
         if (webApp === undefined) {
             throw new Error("We don't have a webApp in our results!");
@@ -76,7 +83,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await getTheResult(deployedURL);
     });
 
-    async function waitAndTryAgain(url, resolve, reject) {
+    async function waitAndTryAgain(url: string, resolve: () => void,
+                                   reject: (err: any) => void) {
         setTimeout(async function() {
             try {
                 await getTheResult(url);
