@@ -28,7 +28,7 @@ describe("Web app Node Azure", () => {
 
     it("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
-        this.timeout(10 * 60 * 1000);
+        this.timeout(15 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
         await fs.emptyDirAsync(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
@@ -67,7 +67,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         //     webAppSamplePath);
         const resourcesInEnvironment =
          await CliUtilities.deployResources(webAppSamplePath, deploymentType,
-                                           true);
+                                           true, true);
 
         const webApp = resourcesInEnvironment.find((resource) =>
             CommonUtilities.isClass(resource,
@@ -110,9 +110,13 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                     }
                 }
             } catch (err) {
+                // BUGBUG: Yes we will go into an endless loop if
+                // all we get are ECONNREFUSED errors but eventually
+                // the test itself times out.
                 if (err.error.errno === "ECONNREFUSED") {
                     // We made the request too quickly
                     waitAndTryAgain(url, resolve, reject);
+                    return;
                 }
                 throw err;
             }
@@ -133,7 +137,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
-        await CliUtilities.deployResources(webAppSamplePath, deploymentType);
+        await CliUtilities.deployResources(webAppSamplePath, deploymentType,
+                                            false, true);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
 

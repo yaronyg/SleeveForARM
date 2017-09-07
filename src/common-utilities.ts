@@ -18,7 +18,9 @@ export enum azCommandOutputs {
     string,
 }
 
-export async function exec(command: string, cwd: string) {
+export interface IExecOutput { stdout: string; stderr: string; }
+
+export async function exec(command: string, cwd: string): Promise<IExecOutput> {
     try {
         Winston.debug(`exec about to run command ${command} in cwd ${cwd}`);
         const result = await childProcessExec(command, { cwd });
@@ -207,16 +209,16 @@ export async function wait(millisecondsToWait: number) {
     });
 }
 
-export async function retryAfterFailure(command: () => Promise<void>,
-                                        counter: number) {
+export async function retryAfterFailure<T>(command: () => Promise<T>,
+                                           counter: number): Promise<T> {
     try {
-        await command();
+        return await command();
     } catch (err) {
         if (counter === 0) {
             throw err;
         }
         await wait(1000);
-        await retryAfterFailure(command, --counter);
+        return await retryAfterFailure(command, --counter);
     }
 }
 

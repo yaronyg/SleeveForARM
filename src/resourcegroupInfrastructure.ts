@@ -65,10 +65,11 @@ export class ResourceGroupInfrastructure extends ResourceGroup
     }
 
     public async deployResource(): Promise<this> {
+        if (this.promiseGate.isGateOpen) {
+            throw new Error("Deploy was already called");
+        }
+
         try {
-            if (this.promiseGate.isGateOpen) {
-                throw new Error("Deploy was already called");
-            }
             await CommonUtilities.runAzCommand(
 `az group create --name ${this.resourceGroupName} \
 --location "${this.location}"`);
@@ -78,6 +79,27 @@ export class ResourceGroupInfrastructure extends ResourceGroup
             return this;
         } catch (err) {
             this.promiseGate.openGateError(err);
+            throw err;
+        }
+    }
+
+    public async deleteResource(): Promise<this> {
+        if (this.promiseGate.isGateOpen) {
+            throw new Error(
+"Delete is intended to clean up before we deploy, at least for now.");
+        }
+
+        try {
+            await CommonUtilities.runAzCommand(
+`az group delete --name ${this.resourceGroupName} --yes`,
+CommonUtilities.azCommandOutputs.string);
+            return this;
+        } catch (err) {
+            if (err.toString().includes(
+"stderr ERROR: Resource group 'mySQLSCUp' could not be found.")) {
+                // Group doesn't exist, which is fine
+                return this;
+            }
             throw err;
         }
     }

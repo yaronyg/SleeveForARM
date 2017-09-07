@@ -70,10 +70,16 @@ export async function setup(rootPath: string, serviceName: string,
     await infraResource.setup();
 }
 
+// TODO: developmentDeploy is really just intended for Node WebAPPs so that
+// we deploy code in Azure that will properly set up the environment
+// to take a version of Sleeve from the local machine and not look to
+// NPM. But we really need to shove this into some kind of property bag
+// as the name and usage is confusing.
 export async function deployResources(
                           rootOfDeploymentPath: string,
                           deploymentType: Resource.DeployType,
-                          developmentDeploy = false)
+                          developmentDeploy = false,
+                          deleteResourceGroupBeforeDeploy = false)
                           : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
     const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
@@ -84,10 +90,14 @@ this is not a properly configured project");
     }
     await CommonUtilities.npmSetup(rootOfDeploymentPath);
     const rootResourceGroup: ResourceGroup = require(rootSleevePath);
-    const rootResourceGroupInfra: InfraResourceType =
-      createInfraResource(rootResourceGroup, rootOfDeploymentPath);
+    const rootResourceGroupInfra =
+      // tslint:disable-next-line:max-line-length
+      createInfraResource(rootResourceGroup, rootOfDeploymentPath) as ResourceGroupInfrastructure.ResourceGroupInfrastructure;
     await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
                                          deploymentType);
+    if (deleteResourceGroupBeforeDeploy) {
+      await rootResourceGroupInfra.deleteResource();
+    }
     resourcesInEnvironment.push(rootResourceGroupInfra);
 
     await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,

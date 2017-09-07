@@ -66,22 +66,22 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
         const resourcesInEnvironment =
-            await CliUtilities.deployResources(mySqlSamplePath, deploymentType);
+            await CliUtilities.deployResources(mySqlSamplePath, deploymentType,
+                                                false, true);
 
         const sqlResource =
             resourcesInEnvironment.find((resource) =>
                 CommonUtilities.isClass(resource,
-                        MySqlAzureInfrastructure.MySqlAzureInfrastructure));
+                        // tslint:disable-next-line:max-line-length
+                        MySqlAzureInfrastructure.MySqlAzureInfrastructure)) as MySqlAzureInfrastructure.MySqlAzureInfrastructure;
 
         // tslint:disable-next-line:no-unused-expression
         expect(sqlResource).to.not.be.undefined;
 
-        // Test relative path
-        await (sqlResource as MySqlAzureInfrastructure.MySqlAzureInfrastructure)
-            .runMySqlScript("sqlFile");
+        await sqlResource.setFirewallAllowAll();
 
-        // Test absolute path
-        await (sqlResource as MySqlAzureInfrastructure.MySqlAzureInfrastructure)
-            .runMySqlScript(testSqlFilePath);
+        const result = await sqlResource.runMySqlScript(testSqlFilePath);
+
+        expect(result.stdout).includes("name").and.includes("A Name");
     });
 });

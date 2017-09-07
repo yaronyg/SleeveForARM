@@ -164,23 +164,23 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
                 scriptPaths.push(scriptPath);
             }
 
+            let firewallRuleName;
             if (scriptPaths.length !== 0) {
-                let firewallRuleName;
-                try {
-                    firewallRuleName = await this.setUpFirewallForSqlScript();
+                firewallRuleName = await this.setUpFirewallForSqlScript();
 
-                    for (const scriptPath of scriptPaths) {
-                        promisesToWaitFor.push(this.runMySqlScript(scriptPath));
-                    }
-                } finally {
-                    if (this.deploymentType === Resource.DeployType.Production
-                            && firewallRuleName) {
-                        await this.removeFirewallRule(firewallRuleName);
-                    }
+                for (const scriptPath of scriptPaths) {
+                    promisesToWaitFor.push(this.runMySqlScript(scriptPath));
                 }
             }
 
-            await Promise.all(promisesToWaitFor);
+            try {
+                await Promise.all(promisesToWaitFor);
+            } finally {
+                if (this.deploymentType === Resource.DeployType.Production
+                        && firewallRuleName) {
+                    await this.removeFirewallRule(firewallRuleName);
+                }
+            }
             return this;
         } catch (err) {
             if (!this.promiseGate.isGateOpen) {
@@ -209,7 +209,7 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
 -u ${this.securityName}@${this.mySqlAzureFullName} \
 -p${this.password} -v`;
         let devIp: string = "";
-        const firewallRuleName = Crypto.randomBytes(12).toString("hex");
+        const baseFirewallRuleName = Crypto.randomBytes(10).toString("hex");
         const re =
             /Client with IP address (.*) is not allowed to access the server/;
         try {
@@ -230,33 +230,35 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
             throw new Error("Call to get our IP failed!");
         }
 
-        await this.setFirewallRule(firewallRuleName, devIp);
-        return firewallRuleName;
+        return await this.setFirewallRule(baseFirewallRuleName, devIp);
     }
+
     public async runMySqlScript(pathToScript: string) {
         const initSqlCommand =
 `mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
 -u ${this.securityName}@${this.mySqlAzureFullName} \
 -p${this.password} -v < "${pathToScript}"`;
-        await CommonUtilities.retryAfterFailure(async () => {
-            await CommonUtilities.exec(initSqlCommand,
+        // tslint:disable-next-line:max-line-length
+        return await CommonUtilities.retryAfterFailure<CommonUtilities.IExecOutput> (async () => {
+            return await CommonUtilities.exec(initSqlCommand,
                                     this.targetDirectoryPath);
         }, 5);
     }
 
-    public setFirewallRule(nameOfResourceSettingRule: string,
-                           ipAddress: string) {
+    public async setFirewallRule(nameOfResourceSettingRule: string,
+                                 ipAddress: string) {
         const ipNoDots = ipAddress.replace(/\./g, "");
-        const ruleName = `${nameOfResourceSettingRule}${ipNoDots}`
-        return CommonUtilities.runAzCommand(
+        const ruleName = `${nameOfResourceSettingRule}${ipNoDots}`;
+        await CommonUtilities.runAzCommand(
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
 --server ${this.mySqlAzureFullName} \
 --name ${ruleName} --start-ip-address ${ipAddress} \
 --end-ip-address ${ipAddress}`);
+        return ruleName;
     }
 
-    private setFirewallAllowAll() {
+    public setFirewallAllowAll() {
         return CommonUtilities.runAzCommand(
 `az mysql server firewall-rule create \
 --resource-group ${this.resourceGroup.resourceGroupName} \
