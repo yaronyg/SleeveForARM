@@ -57,7 +57,7 @@ export abstract class Resource {
         return this;
     }
 
-    protected get baseName() {
+    public get baseName() {
         return this.baseNameProperty;
     }
 

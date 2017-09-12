@@ -28,7 +28,7 @@ export async function exec(command: string, cwd: string): Promise<IExecOutput> {
                         output %j", command, cwd, jsonCycle.decycle(result));
         return result;
     } catch (err) {
-        Winston.error("exec ran with command %s in directory %s and \
+        Winston.debug("exec ran with command %s in directory %s and \
                         failed with error %j\n\
 stdout %s\nstderr %s\n", command, cwd, err, err.stdout, err.stderr);
         throw err;

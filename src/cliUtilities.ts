@@ -131,7 +131,8 @@ this is not a properly configured project");
             await (resource as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure)
               .getBaseDeployClassInstance();
           console.log(
-`Web app is available at ${await baseDeployWebApp.getDeployedURL()}`);
+`Web app ${resource.baseName} is available at \
+${await baseDeployWebApp.getDeployedURL()}`);
         }
       }
     }
