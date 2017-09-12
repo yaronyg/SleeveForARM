@@ -1,5 +1,5 @@
 import * as Crypto from "crypto";
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
 import * as Winston from "winston";
@@ -157,7 +157,7 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
                 const scriptPath =
                     Path.isAbsolute(checkScriptPath) ? checkScriptPath :
                         Path.join(this.targetDirectoryPath, checkScriptPath);
-                if (await fs.existsAsync(scriptPath) === false) {
+                if (await fs.pathExists(scriptPath) === false) {
                     throw new Error(`Submitted mySql initialization script, \
     located at ${scriptPath} for ${this.baseName} does not exist.`);
                 }

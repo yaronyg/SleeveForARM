@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Winston from "winston";
 
@@ -15,7 +15,7 @@ export async function setupMochaTestLogging(
         : Promise<[string, string]> {
     const testingDirFullPath = generateLogPath(mochaThis);
     if (emptyDir) {
-        await fs.emptyDirAsync(testingDirFullPath);
+        await fs.emptyDir(testingDirFullPath);
     }
     const logFilePath = Path.join(testingDirFullPath, "output.log");
     Winston.add(Winston.transports.File, {

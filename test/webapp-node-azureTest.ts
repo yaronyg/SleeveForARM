@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Request from "request-promise-native";
 import * as CliUtilities from "../src/cliUtilities";
@@ -30,7 +30,7 @@ describe("Web app Node Azure", () => {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(15 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
-        await fs.emptyDirAsync(webAppSamplePath);
+        await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
         // tslint:disable-next-line:max-line-length
@@ -49,7 +49,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         const testAssetsPath = Path.join(__dirname, "..", "testAssets");
         for (const fileName of ["index.ts", "deploy.cmd", ".deployment"]) {
             const fileToCopyPath = Path.join(testAssetsPath, fileName);
-            await fs.copyAsync(fileToCopyPath, Path.join(fooPath, fileName),
+            await fs.copy(fileToCopyPath, Path.join(fooPath, fileName),
                 { overwrite: true});
         }
 
@@ -127,7 +127,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         const deploymentType = Resource.DeployType.LocalDevelopment;
         this.timeout(10 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
-        await fs.emptyDirAsync(webAppSamplePath);
+        await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
         // tslint:disable-next-line:max-line-length
@@ -150,7 +150,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         const fileToCopy = Path.join(__dirname, "..", "testAssets",
             "index.ts");
-        await fs.copyAsync(fileToCopy, Path.join(fooPath, "index.ts"),
+        await fs.copy(fileToCopy, Path.join(fooPath, "index.ts"),
                             { overwrite: true });
         try {
             await CommonUtilities.exec(

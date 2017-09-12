@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
@@ -50,7 +50,7 @@ export async function setup(rootPath: string, serviceName: string,
       console.log(`Directory with name ${serviceName} already exists.`);
       process.exit(-1);
     }
-    await fs.ensureDirAsync(targetPath);
+    await fs.ensureDir(targetPath);
     let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {

@@ -1,6 +1,8 @@
 # SleeveForARM
 The Sleeve CLI provides an environment to make developing, deploying and managing Azure services easy.
 
+We focus on handling set up for best practices in security, high availability, management, logging, etc. in Azure so that you can focus on writing your application code.
+
 # Disclaimer
 This is a very early hack just intended to show the general ideas. It isn't full featured enough to use for anything real yet.
 

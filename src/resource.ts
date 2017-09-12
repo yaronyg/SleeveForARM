@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 
@@ -21,7 +21,7 @@ export abstract class Resource {
     protected static async internalSetup(fileName: string,
                                          targetDirectoryPath: string)
                                          : Promise<void> {
-        if (!(await fs.existsAsync(targetDirectoryPath))) {
+        if (!(await fs.pathExists(targetDirectoryPath))) {
             throw new Error(
                 "We expect the caller to create the directory for us");
         }
@@ -30,7 +30,7 @@ export abstract class Resource {
                         "..",
                         "assets",
                         Path.basename(fileName, ".js"));
-        await fs.copyAsync(assetPath, targetDirectoryPath);
+        await fs.copy(assetPath, targetDirectoryPath);
         await CommonUtilities.npmSetup(targetDirectoryPath);
     }
 

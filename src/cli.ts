@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
@@ -18,7 +18,7 @@ Yargs
                       "..",
                       "assets",
                       "cliInit");
-      await fs.copyAsync(assetPath, process.cwd());
+      await fs.copy(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());
       await CommonUtilities.executeOnSleeveResources(process.cwd(),
         (path) => {
