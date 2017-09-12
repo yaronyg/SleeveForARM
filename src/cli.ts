@@ -24,6 +24,9 @@ Yargs
         (path) => {
           return CommonUtilities.npmSetup(path);
         });
+      if (await fs.pathExists(Path.join(process.cwd(), ".git")) === false) {
+        CommonUtilities.exec("git init", process.cwd());
+      }
     }
   )
   .command(
@@ -43,7 +46,10 @@ Yargs
     },
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
-      CliUtilities.setup(process.cwd(), argv.serviceName, argv.serviceType);
+      const targetPath: string =
+        await CliUtilities.setup(process.cwd(), argv.serviceName,
+                                 argv.serviceType);
+      console.log(`Resource created in ${targetPath}`);
     }
   )
   .command(

@@ -43,8 +43,11 @@ function createInfraResource(resource: Resource.Resource,
   return infraResource;
 }
 
-export async function setup(rootPath: string, serviceName: string,
-                            serviceType: string) {
+export async function setup(currentWorkingDirectory: string,
+                            serviceName: string,
+                            serviceType: string): string {
+    const rootPath: string =
+      await CommonUtilities.findGitRootDir(currentWorkingDirectory);
     const targetPath = Path.join(rootPath, serviceName);
     if (fs.existsSync(targetPath)) {
       console.log(`Directory with name ${serviceName} already exists.`);
@@ -68,6 +71,7 @@ export async function setup(rootPath: string, serviceName: string,
     }
     infraResource.initialize(null, targetPath);
     await infraResource.setup();
+    return targetPath;
 }
 
 // TODO: developmentDeploy is really just intended for Node WebAPPs so that
@@ -76,12 +80,14 @@ export async function setup(rootPath: string, serviceName: string,
 // NPM. But we really need to shove this into some kind of property bag
 // as the name and usage is confusing.
 export async function deployResources(
-                          rootOfDeploymentPath: string,
+                          currentWorkingDirectory: string,
                           deploymentType: Resource.DeployType,
                           developmentDeploy = false,
                           deleteResourceGroupBeforeDeploy = false)
                           : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
+    const rootOfDeploymentPath: string =
+      await CommonUtilities.findGitRootDir(currentWorkingDirectory);
     const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
     if (!(fs.existsSync(rootSleevePath))) {
       console.log("There is no sleeve.js in the root, \

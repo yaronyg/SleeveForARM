@@ -10,6 +10,7 @@ This is a very early hack just intended to show the general ideas. It isn't full
 For the moment Sleeve only runs (or at least is tested) on Windows. We will eventually fix this.
 
 Install:
+* [Git](https://git-scm.com/downloads)
 * [Node v8.4.0](https://nodejs.org/en/download/current/)
 * [mysql CLI](https://chocolatey.org/packages/mysql) (we will eventually [remove this dependency](https://github.com/yaronyg/SleeveForARM/issues/5))
 * [AZ CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
