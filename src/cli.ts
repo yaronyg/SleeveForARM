@@ -5,6 +5,8 @@ import * as CliUtilities from "./cliUtilities";
 import * as CommonUtilities from "./common-utilities";
 import * as Resource from "./resource";
 
+const ProjectNameLength: number = 10;
+
 // tslint:disable-next-line:no-unused-expression
 Yargs
   .command(
@@ -18,6 +20,10 @@ Yargs
                       "..",
                       "assets",
                       "cliInit");
+      if (!(await CommonUtilities.validatelength(Path.basename(process.cwd()),
+                                             ProjectNameLength))) {
+      throw new Error(`Project name should be less than ${ProjectNameLength}`);
+                                            }
       await fs.copyAsync(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());
       await CommonUtilities.executeOnSleeveResources(process.cwd(),

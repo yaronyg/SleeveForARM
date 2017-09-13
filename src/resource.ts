@@ -19,12 +19,21 @@ export enum ResourcesWeSupportSettingUp {
 
 export abstract class Resource {
     protected static async internalSetup(fileName: string,
-                                         targetDirectoryPath: string)
+                                         targetDirectoryPath: string,
+                                         length: number)
                                          : Promise<void> {
+        if (!(await CommonUtilities.validatelength(
+                            (Path.basename(targetDirectoryPath)), length))) {
+            await fs.removeAsync(targetDirectoryPath);
+            throw new Error(
+                `The name of the resource ${Path.basename(targetDirectoryPath)}\
+ is longer than expected ${length}` );
+        }
         if (!(await fs.existsAsync(targetDirectoryPath))) {
             throw new Error(
                 "We expect the caller to create the directory for us");
         }
+
         const assetPath =
             Path.join(__dirname,
                         "..",

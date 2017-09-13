@@ -4,6 +4,8 @@ import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import ResourceGroup from "./resourcegroup";
 
+const RGLength: number = 10;
+
 export class BaseDeployResourceGroupInfrastructure {
     constructor(private baseGroup: ResourceGroupInfrastructure) {}
 
@@ -39,7 +41,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
 
     public async setup(): Promise<void> {
         return await ResourceGroup.internalSetup(__filename,
-                this.targetDirectoryPath);
+                this.targetDirectoryPath, RGLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],

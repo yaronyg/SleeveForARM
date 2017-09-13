@@ -14,6 +14,9 @@ import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 
+const MySQLNameLength: number = 49
+;
+
 export interface ISqlCreateResult {
     fullyQualifiedDomainName: string;
     name: string;
@@ -83,8 +86,8 @@ export class MySqlAzureInfrastructure extends MySqlAzure
         return this;
     }
     public async setup(): Promise<void> {
-        return await MySqlAzureInfrastructure
-            .internalSetup(__filename, this.targetDirectoryPath);
+        return await MySqlAzureInfrastructure.internalSetup(__filename,
+                                   this.targetDirectoryPath, MySQLNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)

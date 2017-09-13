@@ -10,6 +10,8 @@ import * as Resource from "./resource";
 import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
 
+const WebAppLenght: number = 25;
+
 interface IPublishingProfile {
     publishMethod: string;
     userName: string;
@@ -44,15 +46,14 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     }
 
     public async setup(): Promise<void> {
-        return await WebappNodeAzure.internalSetup(__filename,
-                                             this.targetDirectoryPath);
+       return await WebappNodeAzure.internalSetup(__filename,
+                                    this.targetDirectoryPath, WebAppLenght);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
                     : Promise<this> {
         await super.hydrate(resourcesInEnvironment, deploymentType);
-
         if (this.webAppDNSName === undefined) {
             this.webAppDNSName = this.resourceGroup.resourceGroupName +
                                  this.baseName;
