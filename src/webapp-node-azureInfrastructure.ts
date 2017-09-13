@@ -3,14 +3,13 @@ import * as Path from "path";
 import * as Util from "util";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data.json";
 import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
-
-const WebAppLength: number = 25;
 
 interface IPublishingProfile {
     publishMethod: string;
@@ -47,7 +46,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async setup(): Promise<void> {
        return await WebappNodeAzure.internalSetup(__filename,
-                                    this.targetDirectoryPath, WebAppLength);
+                           this.targetDirectoryPath, (<any>data).WebAppNameLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],

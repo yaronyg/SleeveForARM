@@ -22,18 +22,21 @@ export abstract class Resource {
                                          targetDirectoryPath: string,
                                          maximumNameLength: number)
                                          : Promise<void> {
+        const serviceName = Path.basename(targetDirectoryPath);
         if (!(await CommonUtilities.validateResource(
-                    (Path.basename(targetDirectoryPath)), maximumNameLength))) {
-            await fs.removeAsync(targetDirectoryPath);
+                    (serviceName), maximumNameLength))) {
             throw new Error(
                 `The name of the resource ${Path.basename(targetDirectoryPath)}\
- is longer than expected ${maximumNameLength}` );
-        }
-        if (!(await fs.existsAsync(targetDirectoryPath))) {
-            throw new Error(
-                "We expect the caller to create the directory for us");
+ should be less than ${maximumNameLength} characters,\
+ contains only alphanumeric characters and start with a letter\n` );
         }
 
+        if (fs.existsSync(targetDirectoryPath)) {
+          console.log(`Directory with name ${serviceName} already exists.`);
+          process.exit(-1);
+        }
+
+        await fs.ensureDirAsync(targetDirectoryPath);
         const assetPath =
             Path.join(__dirname,
                         "..",

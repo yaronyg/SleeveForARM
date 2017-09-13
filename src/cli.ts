@@ -3,9 +3,8 @@ import * as Path from "path";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data.json";
 import * as Resource from "./resource";
-
-const ProjectNameLength: number = 10;
 
 // tslint:disable-next-line:no-unused-expression
 Yargs
@@ -21,9 +20,10 @@ Yargs
                       "assets",
                       "cliInit");
       if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
-                                                   ProjectNameLength))) {
-      throw new Error(`Project name should be less than ${ProjectNameLength}\
-characters, contains only alphanumeric characters and start with a letter\n`);
+                                              (<any>data).ProjectNameLength))){
+      throw new Error(`Project name should be less than \
+${(<any>data).ProjectNameLength} characters, contains only \
+alphanumeric characters and start with a letter\n`);
                                             }
       await fs.copyAsync(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());

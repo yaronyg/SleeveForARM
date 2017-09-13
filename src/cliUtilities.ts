@@ -45,12 +45,13 @@ function createInfraResource(resource: Resource.Resource,
 
 export async function setup(rootPath: string, serviceName: string,
                             serviceType: string) {
+    // Moving this code to internal setup 
     const targetPath = Path.join(rootPath, serviceName);
-    if (fs.existsSync(targetPath)) {
-      console.log(`Directory with name ${serviceName} already exists.`);
-      process.exit(-1);
-    }
-    await fs.ensureDirAsync(targetPath);
+    // if (fs.existsSync(targetPath)) {
+    //   console.log(`Directory with name ${serviceName} already exists.`);
+    //   process.exit(-1);
+    // }
+    // await fs.ensureDirAsync(targetPath);
     let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {

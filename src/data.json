@@ -1,0 +1,7 @@
+{
+    "ProjectNameLength" : "10",
+    "ResourceGroupLength" : "10",
+    "WebAppNameLength" : "25",
+    "KeyVaultNameLength" : "24",
+    "MySQLNameLength" : "49"
+}
