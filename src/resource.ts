@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 
@@ -24,12 +24,12 @@ export abstract class Resource {
                                          : Promise<void> {
         if (!(await CommonUtilities.validateResource(
                     (Path.basename(targetDirectoryPath)), maximumNameLength))) {
-            await fs.removeAsync(targetDirectoryPath);
+            await fs.remove(targetDirectoryPath);
             throw new Error(
                 `The name of the resource ${Path.basename(targetDirectoryPath)}\
  is longer than expected ${maximumNameLength}` );
         }
-        if (!(await fs.existsAsync(targetDirectoryPath))) {
+        if (!(await fs.pathExists(targetDirectoryPath))) {		
             throw new Error(
                 "We expect the caller to create the directory for us");
         }
@@ -39,7 +39,7 @@ export abstract class Resource {
                         "..",
                         "assets",
                         Path.basename(fileName, ".js"));
-        await fs.copyAsync(assetPath, targetDirectoryPath);
+        await fs.copy(assetPath, targetDirectoryPath);
         await CommonUtilities.npmSetup(targetDirectoryPath);
     }
 
@@ -66,7 +66,7 @@ export abstract class Resource {
         return this;
     }
 
-    protected get baseName() {
+    public get baseName() {
         return this.baseNameProperty;
     }
 

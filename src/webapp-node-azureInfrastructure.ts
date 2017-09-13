@@ -1,4 +1,4 @@
-import * as FS from "fs-extra-promise";
+import * as FS from "fs-extra";
 import * as Path from "path";
 import * as Util from "util";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
@@ -113,7 +113,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
-        await FS.ensureDirAsync(sleevePath);
+        await FS.ensureDir(sleevePath);
         const variablePath =
             Path.join(CommonUtilities
                         .localScratchDirectory(this.targetDirectoryPath),
@@ -222,13 +222,13 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         const gitCloneDepotPath = Path.join(gitCloneDepotParentPath,
                                             this.webAppDNSName);
 
-        await FS.emptyDirAsync(gitCloneDepotParentPath);
+        await FS.emptyDir(gitCloneDepotParentPath);
 
         await CommonUtilities.exec(
                 Util.format(`git clone ${gitURL}`),
                     gitCloneDepotParentPath);
 
-        const directoryContents = await FS.readdirAsync(gitCloneDepotPath);
+        const directoryContents = await FS.readdir(gitCloneDepotPath);
 
         // It's a git depo so it always has a hidden .git file, hence there
         // will be at least one file
@@ -241,7 +241,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         const nodeModulesPath =
             Path.join(this.targetDirectoryPath, "node_modules");
         const sleevePath = Path.join(this.targetDirectoryPath, ".sleeve");
-        await FS.copyAsync(this.targetDirectoryPath, gitCloneDepotPath, {
+        await FS.copy(this.targetDirectoryPath, gitCloneDepotPath, {
             filter: (src) => (src !== nodeModulesPath && src !== sleevePath)
         });
 
@@ -270,11 +270,11 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                                         : Promise<void> {
         // We want to clone node_modules in this case so we need to
         // get rid of .gitignore
-        await FS.removeAsync(Path.join(gitCloneDepotPath, ".gitignore"));
+        await FS.remove(Path.join(gitCloneDepotPath, ".gitignore"));
 
         const sleeveForArmClonePath =
             Path.join(gitCloneDepotPath, "sleeveforarm") ;
-        await FS.ensureDirAsync(sleeveForArmClonePath);
+        await FS.ensureDir(sleeveForArmClonePath);
 
         const depotPath = Path.join(__dirname, "..");
 
@@ -283,7 +283,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         const nodeModulesPath =
             Path.join(depotPath, "node_modules");
 
-        await FS.copyAsync(depotPath, sleeveForArmClonePath, {
+        await FS.copy(depotPath, sleeveForArmClonePath, {
             filter: (src) => (src !== disposableTestFilesPath) &&
                              (src !== nodeModulesPath)
         });
@@ -291,10 +291,10 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         // Need to make the node module files just look like regular files
         // Otherwise the WebApp Git Repo will treat sleeveforarm as a
         // sub-module and not properly copy it over.
-        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".git"));
+        await FS.remove(Path.join(sleeveForArmClonePath, ".git"));
 
         // Otherwise we won't check in any of the .js or other files we normally
         // ignore.
-        await FS.removeAsync(Path.join(sleeveForArmClonePath, ".gitignore"));
+        await FS.remove(Path.join(sleeveForArmClonePath, ".gitignore"));
     }
 }

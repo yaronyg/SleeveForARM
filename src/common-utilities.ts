@@ -1,8 +1,7 @@
 import * as child_process from "child_process";
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as jsonCycle from "json-cycle";
 import * as Path from "path";
-import * as tmp from "tmp-promise";
 import { format, promisify } from "util";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
@@ -28,7 +27,7 @@ export async function exec(command: string, cwd: string): Promise<IExecOutput> {
                         output %j", command, cwd, jsonCycle.decycle(result));
         return result;
     } catch (err) {
-        Winston.error("exec ran with command %s in directory %s and \
+        Winston.debug("exec ran with command %s in directory %s and \
                         failed with error %j\n\
 stdout %s\nstderr %s\n", command, cwd, err, err.stdout, err.stderr);
         throw err;
@@ -55,33 +54,6 @@ export async function runExecFailOnStderr(command: string, skipLog = false) {
         throw new Error(format("Command %s failed with error %j\n\
 stdout %s\nstderr %s", command, err, err.stdout, err.stderr));
     }
-}
-
-export async function runPowerShellScript(scriptContents: string) {
-    return new Promise(async function(resolve, reject) {
-        const tempFileObject =
-            await tmp.file({prefix: "sleeve-", postfix: ".ps1"});
-        await fs.writeAsync(tempFileObject.fd, scriptContents);
-        await fs.closeAsync(tempFileObject.fd);
-        Winston.debug(`Temp file location is ${tempFileObject.path}`);
-
-        const ps = child_process.spawn("powershell.exe",
-            ["-NoLogo", "-NonInteractive", tempFileObject.path]);
-
-        ps.stdout.on("data", (data) =>
-            Winston.debug("stdout:" + data.toString()));
-        ps.stderr.on("data", (data) =>
-            Winston.debug("stderr:" + data.toString()));
-        ps.on("exit", (code) => {
-            if (code !== 0) {
-                const error = `runPowerShell ${tempFileObject.path} failed \
-with code ${code}.`;
-                Winston.error(error);
-                reject(Error(error));
-            }
-            resolve();
-        });
-    });
 }
 
 export async function runAzCommand(command: string,
@@ -127,13 +99,13 @@ export async function npmSetup(path: string) {
 export async function executeOnSleeveResources(parentPath: string,
                                                processFunction:
                                 (path: string) => Promise<void>) {
-    const directoryContents = await fs.readdirAsync(parentPath);
+    const directoryContents = await fs.readdir(parentPath);
     const promisesToWaitFor = [];
     for (const childFileName of directoryContents) {
         const candidatePath = Path.join(parentPath, childFileName);
-        const isDirectory = await fs.isDirectoryAsync(candidatePath);
+        const isDirectory = (await fs.stat(candidatePath)).isDirectory;
         const sleevePath = Path.join(candidatePath, "sleeve.js");
-        if (isDirectory && await fs.existsAsync(sleevePath)) {
+        if (isDirectory && await fs.pathExists(sleevePath)) {
             promisesToWaitFor.push(processFunction(candidatePath));
         }
     }
@@ -238,4 +210,23 @@ export function isClass(obj: object, classObj: any): boolean {
 export function validateResource(resourcename: string, length: number) {
     return ((resourcename.length < length) &&
             (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourcename)));
+}
+
+/**
+ * Walks up the directory hierarchy look for the root of a GIT
+ * project.
+ * @param startDir The path to start the directory walk in
+ */
+export async function findGitRootDir(startDir: string)
+        : Promise<string> {
+    let currentDir = startDir;
+    while (true) {
+        if (await fs.pathExists(currentDir) === false) {
+            throw new Error("This isn't a git project");
+        }
+        if (await fs.pathExists(Path.join(currentDir, ".git"))) {
+            return currentDir;
+        }
+        currentDir = Path.normalize(Path.join(currentDir, ".."));
+    }
 }

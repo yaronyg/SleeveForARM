@@ -1,6 +1,8 @@
 # SleeveForARM
 The Sleeve CLI provides an environment to make developing, deploying and managing Azure services easy.
 
+We focus on handling set up for best practices in security, high availability, management, logging, etc. in Azure so that you can focus on writing your application code.
+
 # Disclaimer
 This is a very early hack just intended to show the general ideas. It isn't full featured enough to use for anything real yet.
 
@@ -8,6 +10,7 @@ This is a very early hack just intended to show the general ideas. It isn't full
 For the moment Sleeve only runs (or at least is tested) on Windows. We will eventually fix this.
 
 Install:
+* [Git](https://git-scm.com/downloads)
 * [Node v8.4.0](https://nodejs.org/en/download/current/)
 * [mysql CLI](https://chocolatey.org/packages/mysql) (we will eventually [remove this dependency](https://github.com/yaronyg/SleeveForARM/issues/5))
 * [AZ CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)

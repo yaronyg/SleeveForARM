@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
@@ -25,12 +25,15 @@ Yargs
       throw new Error(`Project name should be less than ${ProjectNameLength}\
 characters, contains only alphanumeric characters and start with a letter\n`);
                                             }
-      await fs.copyAsync(assetPath, process.cwd());
+      await fs.copy(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());
       await CommonUtilities.executeOnSleeveResources(process.cwd(),
         (path) => {
           return CommonUtilities.npmSetup(path);
         });
+      if (await fs.pathExists(Path.join(process.cwd(), ".git")) === false) {
+        CommonUtilities.exec("git init", process.cwd());
+      }
     }
   )
   .command(
@@ -50,7 +53,10 @@ characters, contains only alphanumeric characters and start with a letter\n`);
     },
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
-      CliUtilities.setup(process.cwd(), argv.serviceName, argv.serviceType);
+      const targetPath: string =
+        await CliUtilities.setup(process.cwd(), argv.serviceName,
+                                 argv.serviceType);
+      console.log(`Resource created in ${targetPath}`);
     }
   )
   .command(

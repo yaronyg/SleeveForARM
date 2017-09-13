@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
@@ -44,7 +44,7 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
 
         const mySqlSamplePath = Path.join(testingDirFullPath, "mySQL");
 
-        await fs.emptyDirAsync(mySqlSamplePath);
+        await fs.emptyDir(mySqlSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
                                     mySqlSamplePath);
 
@@ -54,14 +54,14 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
         // await CliUtilities.setup(mySqlSamplePath, "mySql", "mySqlAzure");
 
         const sqlDir = Path.join(mySqlSamplePath, "mySql");
-        await fs.writeFileAsync(Path.join(sqlDir, "sqlFile"), sqlFile);
+        await fs.writeFile(Path.join(sqlDir, "sqlFile"), sqlFile);
 
         const sqlSleeveJs = Path.join(sqlDir, "sleeve.js");
-        await fs.removeAsync(sqlSleeveJs);
-        await fs.writeFileAsync(sqlSleeveJs, sleeveJSFile);
+        await fs.remove(sqlSleeveJs);
+        await fs.writeFile(sqlSleeveJs, sleeveJSFile);
 
         const testSqlFilePath = Path.join(sqlDir, "testSqlFile");
-        await fs.writeFileAsync(testSqlFilePath, testSqlFile);
+        await fs.writeFile(testSqlFilePath, testSqlFile);
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);

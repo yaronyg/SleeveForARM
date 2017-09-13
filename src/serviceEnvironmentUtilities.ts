@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 
