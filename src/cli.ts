@@ -20,9 +20,10 @@ Yargs
                       "..",
                       "assets",
                       "cliInit");
-      if (!(await CommonUtilities.validatelength(Path.basename(process.cwd()),
-                                             ProjectNameLength))) {
-      throw new Error(`Project name should be less than ${ProjectNameLength}`);
+      if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
+                                                   ProjectNameLength))) {
+      throw new Error(`Project name should be less than ${ProjectNameLength}\
+characters, contains only alphanumeric characters and start with a letter\n`);
                                             }
       await fs.copyAsync(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());

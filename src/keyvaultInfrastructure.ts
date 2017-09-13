@@ -4,7 +4,7 @@ import KeyVault from "./keyvault";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 
-const KVNameLenght: number = 24;
+const KVNameLength: number = 24;
 
 export class BaseDeployKeyVaultInfrastructure {
     constructor(private baseKeyVault: KeyVaultInfrastructure) {}
@@ -34,7 +34,7 @@ export class KeyVaultInfrastructure
     }
     public async setup(): Promise<void> {
         return await KeyVaultInfrastructure
-            .internalSetup(__filename, this.targetDirectoryPath, KVNameLenght);
+            .internalSetup(__filename, this.targetDirectoryPath, KVNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)

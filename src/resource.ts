@@ -20,14 +20,14 @@ export enum ResourcesWeSupportSettingUp {
 export abstract class Resource {
     protected static async internalSetup(fileName: string,
                                          targetDirectoryPath: string,
-                                         length: number)
+                                         maximumNameLength: number)
                                          : Promise<void> {
-        if (!(await CommonUtilities.validatelength(
-                            (Path.basename(targetDirectoryPath)), length))) {
+        if (!(await CommonUtilities.validateResource(
+                    (Path.basename(targetDirectoryPath)), maximumNameLength))) {
             await fs.removeAsync(targetDirectoryPath);
             throw new Error(
                 `The name of the resource ${Path.basename(targetDirectoryPath)}\
- is longer than expected ${length}` );
+ is longer than expected ${maximumNameLength}` );
         }
         if (!(await fs.existsAsync(targetDirectoryPath))) {
             throw new Error(

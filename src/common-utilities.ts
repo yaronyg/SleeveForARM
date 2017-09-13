@@ -235,9 +235,7 @@ export function isClass(obj: object, classObj: any): boolean {
     return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }
 
-export function validatelength(resourcename: string, length: number) {
-    if (resourcename.length < length) {
-        return true;
-    }
-    return false;
+export function validateResource(resourcename: string, length: number) {
+    return ((resourcename.length < length) &&
+            (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourcename)));
 }
