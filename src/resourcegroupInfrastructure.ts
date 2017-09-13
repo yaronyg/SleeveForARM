@@ -15,7 +15,6 @@ export class BaseDeployResourceGroupInfrastructure {
 export class ResourceGroupInfrastructure extends ResourceGroup
     // tslint:disable-next-line:max-line-length
     implements IInfrastructure.IInfrastructure<BaseDeployResourceGroupInfrastructure> {
-    private location: string;
     private resourceGroupNameProperty: string;
     private readonly promiseGate = new PromiseGate();
 
@@ -46,12 +45,12 @@ export class ResourceGroupInfrastructure extends ResourceGroup
                          deploymentType: Resource.DeployType)
                     : Promise<this> {
         await super.hydrate(resourcesInEnvironment, deploymentType);
-        if (this.location === undefined) {
-            const locations = await CommonUtilities.azAppServiceListLocations();
-            this.location = locations[0].name;
+        if (this.dataCenter === undefined) {
+            throw new Error(
+"setDataCenter in root sleeve.js file MUST be set to a DC name");
         }
 
-        const locationAcronym = this.location.split(" ")
+        const locationAcronym = this.dataCenter.split(" ")
         .reduce((output, word) => {
             return output + word[0];
         }, "");
@@ -72,7 +71,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
         try {
             await CommonUtilities.runAzCommand(
 `az group create --name ${this.resourceGroupName} \
---location "${this.location}"`);
+--location "${this.dataCenter}"`);
 
             this.promiseGate.openGateSuccess(
                 new BaseDeployResourceGroupInfrastructure(this));

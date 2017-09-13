@@ -1,2 +1,3 @@
 const resourcegroupAzure = require("sleeveforarm/src/resourcegroup").default;
-module.exports = new resourcegroupAzure().setGlobalDefault(true);
+const resource = require("sleeveforarm/src/resource");
+module.exports = new resourcegroupAzure().setGlobalDefault(true).setDataCenter(XXXX);

@@ -1,5 +1,6 @@
 import * as fs from "fs-extra";
 import * as Path from "path";
+import * as ReplaceInFile from "replace-in-file";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
 import * as IInfrastructure from "./IInfrastructure";
@@ -43,9 +44,35 @@ function createInfraResource(resource: Resource.Resource,
   return infraResource;
 }
 
+export async function init(currentWorkingDirectory: string) {
+  const assetPath =
+    Path.join(__dirname,
+                "..",
+                "assets",
+                "cliInit");
+  await fs.copy(assetPath, currentWorkingDirectory);
+  const locations = await CommonUtilities.azAppServiceListLocations();
+  const dataCenterEnum: string = locations[0].name.replace(/ /g, "");
+  const replaceInFileOptions = {
+    files: Path.join(currentWorkingDirectory, "sleeve.js"),
+    from: /XXXX/,
+    to: `resource.DataCenterNames.${dataCenterEnum}`
+  };
+  await ReplaceInFile(replaceInFileOptions);
+  await CommonUtilities.npmSetup(currentWorkingDirectory);
+  await CommonUtilities.executeOnSleeveResources(currentWorkingDirectory,
+  (path) => {
+    return CommonUtilities.npmSetup(path);
+  });
+  if (await fs.pathExists(Path.join(currentWorkingDirectory, ".git"))
+        === false) {
+  CommonUtilities.exec("git init", currentWorkingDirectory);
+  }
+}
+
 export async function setup(currentWorkingDirectory: string,
                             serviceName: string,
-                            serviceType: string): string {
+                            serviceType: string): Promise<string> {
     const rootPath: string =
       await CommonUtilities.findGitRootDir(currentWorkingDirectory);
     const targetPath = Path.join(rootPath, serviceName);

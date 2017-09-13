@@ -1,8 +1,5 @@
-import * as fs from "fs-extra";
-import * as Path from "path";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
-import * as CommonUtilities from "./common-utilities";
 import * as Resource from "./resource";
 
 // tslint:disable-next-line:no-unused-expression
@@ -13,20 +10,7 @@ Yargs
     {},
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
-      const assetPath =
-          Path.join(__dirname,
-                      "..",
-                      "assets",
-                      "cliInit");
-      await fs.copy(assetPath, process.cwd());
-      await CommonUtilities.npmSetup(process.cwd());
-      await CommonUtilities.executeOnSleeveResources(process.cwd(),
-        (path) => {
-          return CommonUtilities.npmSetup(path);
-        });
-      if (await fs.pathExists(Path.join(process.cwd(), ".git")) === false) {
-        CommonUtilities.exec("git init", process.cwd());
-      }
+      await CliUtilities.init(process.cwd());
     }
   )
   .command(
