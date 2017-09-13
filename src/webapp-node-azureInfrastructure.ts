@@ -10,7 +10,7 @@ import * as Resource from "./resource";
 import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
 
-const WebAppLenght: number = 25;
+const WebAppLength: number = 25;
 
 interface IPublishingProfile {
     publishMethod: string;
@@ -47,7 +47,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async setup(): Promise<void> {
        return await WebappNodeAzure.internalSetup(__filename,
-                                    this.targetDirectoryPath, WebAppLenght);
+                                    this.targetDirectoryPath, WebAppLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
