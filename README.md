@@ -29,10 +29,10 @@ When we create a compute based resource we put in sample code. Inside of the sam
 
 # An example of using Sleeve
 
-Pick some random 5 or 6 character name. I'll use test below but if you try to use it, it should fail as the name is already grabbed for this demo.
+Pick some random 5 or 6 character name for your service.
 ```console
-> mkdir test
-> cd test
+> mkdir [The name you picked]
+> cd [The name you picked]
 > sleeve init
 > sleeve setup -t webapp-node -n webApp
 > sleeve setup -t mySqlAzure -n data

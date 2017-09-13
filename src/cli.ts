@@ -15,30 +15,31 @@ Yargs
   )
   .command(
     "setup",
-    "Setup a new instance of a service",
+    "Setup a new instance of a resource",
     function(moreYargs) {
       return moreYargs.option("n", {
-        alias: "serviceName",
+        alias: "resourceName",
         describe:
-          "Name of the service to setup and the directory it will be created in"
+          "Name of the resource to setup and the directory it will be created \
+in"
       })
     .option("t", {
-        alias: "serviceType",
+        alias: "resourceType",
         choices: ["webapp-node", "mySqlAzure"],
-        describe: "Type of service to setup"
+        describe: "Type of resource to setup"
     });
     },
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
       const targetPath: string =
-        await CliUtilities.setup(process.cwd(), argv.serviceName,
-                                 argv.serviceType);
+        await CliUtilities.setup(process.cwd(), argv.resourceName,
+                                 argv.resourceType);
       console.log(`Resource created in ${targetPath}`);
     }
   )
   .command(
     "deploy",
-    "Deploy services in current project",
+    "Deploy resources in current project",
     function(moreYargs) {
       return moreYargs.option("t", {
         alias: "deploymentType",
@@ -51,13 +52,20 @@ deploy to Azure production"
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
       await CliUtilities.deployResources(process.cwd(), argv.deploymentType);
+    })
+    .option("v", {
+      alias: "verbose",
+      describe: "Outputs logs to file and screen"
+    })
+  .command(
+    "*",
+    "",
+    {},
+    function(argv) {
+      Yargs.showHelp();
     }
   )
-  .option("v", {
-    alias: "verbose",
-    describe: "Outputs logs to file and screen"
-  }
-  )
-  .help()
+  .help(true)
   .strict()
+  .version()
   .argv;
