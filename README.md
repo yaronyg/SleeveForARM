@@ -14,8 +14,9 @@ Install:
 * [Node v8.4.0](https://nodejs.org/en/download/current/)
 * [mysql CLI](https://chocolatey.org/packages/mysql) (we will eventually [remove this dependency](https://github.com/yaronyg/SleeveForARM/issues/5))
 * [AZ CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
-   * __Please make sure to open a command line and run "az login" to init AZ.__ Sleeve assumes that the local AZ instance has already been logged into whatever account it is supposed to be using.
 * npm install sleeveforarm -g
+
+Once everything is installed __Please make sure to open a command line and run "az login" to init AZ.__ Sleeve assumes that the local AZ instance has already been logged into whatever account it is supposed to be using.
 
 # Sleeve Commands
 * `sleeve init` - If you want to create a new project then create a new directory with a short name (5-6 characters is good) and run this command inside the directory. It will set up a basic config.
@@ -29,11 +30,18 @@ When we create a compute based resource we put in sample code. Inside of the sam
 
 # An example of using Sleeve
 
+First, make sure you did everything listed in the section above on Preparing the machine for Sleeve including running az login.
+
 Pick some random 5 or 6 character name for your service.
 ```console
 > mkdir [The name you picked]
 > cd [The name you picked]
 > sleeve init
+```
+
+The init command can take up to a minute or so to run.
+
+```
 > sleeve setup -t webapp-node -n webApp
 > sleeve setup -t mySqlAzure -n data
 > cd data
@@ -52,11 +60,13 @@ INSERT INTO fooers (name) VALUES ('A Name');
 
 Then save and exit notepad. 
 
-At this point to really get the Sleeve experience it would be best if you can open the test directory in VS Code. Then navigate to data/sleeve.js and open it. After "new MySqlAzure()" hit '.' and you should see autocomplete offering 'addMySqlInitialize'. Select that and pass in the argument "mysqlinit.txt". So the final line will look like:
+At this point to really get the Sleeve experience it would be best if you can open [The nane you picked] directory in VS Code. Then navigate to data/sleeve.js and open it. After "new MySqlAzure()" hit '.' and you should see autocomplete offering 'addMySqlInitialize'. Select that and pass in the argument "mysqlinit.txt". So the final line will look like:
 
 ```javascript
 module.exports = new MySqlAzure().addMySqlInitializationScript("mysqlinit.txt");
 ```
+
+If you don't have auto-save activated in VSCode then please make sure you save the previous file.
 
 The previous tells Sleeve that you have an initialization you want to run on the database and tells us where to find the initialization file.
 
@@ -67,7 +77,7 @@ The previous tells Sleeve that you have an initialization you want to run on the
 
 In order to allow node to talk to the mySQL instance we need mysql2. So we are adding it in. This has nothing to do with Sleeve per se.
 
-Now head back to VS Code and open webApp/index.js. This is a default file we put in place to get the user started. Notice that it contains a require for ServiceEnvironment which is our library to enable finding the mySQL instance. Note that this library works regardles of deployment type, dev, production or CI/CD. So the same code, unchanged, can run in these different environments and still find the dependent resources.
+Now head back to VS Code and open webApp/index.js. This is a default file we put in place to get the user started. Notice that it contains a require for ServiceEnvironment which is our library to enable finding the mySQL instance. Note that this library works regardless of deployment type, dev, production or CI/CD. So the same code, unchanged, can run in these different environments and still find the dependent resources.
 
 Now please replace the contents of webApp/index.js with the code given below.
 
@@ -99,9 +109,10 @@ Now please replace the contents of webApp/index.js with the code given below.
 	console.log("Server running at http://localhost:%d", port);
 ```
 
+Again, if you don't have auto-save activated in VSCode then please make sure to save the previous file.
+
 Now back to the console:
 ```console
-> cd ..
 > sleeve deploy -t dev
 ```
 
@@ -109,9 +120,10 @@ Now get some coffee because this part takes a while, about 4-5 minutes. What we 
 
 Also note that you can run sleeve deploy commands as often as you like. They are idempotent. However beware that it takes just as long to run the command when the resources don't exist as when they are just being created.
 
+However the good news is that unless a change is made in the configuration of the resources deployed to Azure, a dev deployment only needs to be done once. After that one can run local code and communicate with Azure resources at will.
+
 Now back to the console:
 ```console
-> cd webApp
 > node index.js
 ```
 
@@ -121,7 +133,6 @@ Now let's put everything up into Azure.
 
 ```console
 > ctrl-c (to kill node)
-> cd ..
 > sleeve deploy -t prod
 ```
 

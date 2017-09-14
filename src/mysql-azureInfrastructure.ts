@@ -243,7 +243,7 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
         return await CommonUtilities.retryAfterFailure<CommonUtilities.IExecOutput> (async () => {
             return await CommonUtilities.exec(initSqlCommand,
                                     this.targetDirectoryPath);
-        }, 5);
+        }, 60);
     }
 
     public async setFirewallRule(nameOfResourceSettingRule: string,

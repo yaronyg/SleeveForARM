@@ -56,25 +56,35 @@ stdout %s\nstderr %s", command, err, err.stdout, err.stderr));
     }
 }
 
+async function executeAzCommand(command: string, output: azCommandOutputs)
+    : Promise<any | string> {
+        Winston.debug(`About to exec command ${command}`);
+        const stdout = await runExecFailOnStderr(command, true);
+        switch (output) {
+            case azCommandOutputs.json: {
+                const jsonOut = JSON.parse(stdout);
+                Winston.debug("Exec command %s with output %j",
+                    command, jsonOut);
+                return JSON.parse(stdout);
+            }
+            case azCommandOutputs.string: {
+                Winston.debug("Exec command %s with output %s",
+                    command, stdout);
+                return stdout;
+            }
+            default: {
+                throw new Error("Unsupported output type: " + output);
+            }
+        }
+}
+
 export async function runAzCommand(command: string,
-                                   output = azCommandOutputs.json)
+                                   output = azCommandOutputs.json,
+                                   retriesAfterFailure = 60)
                                    : Promise<any | string> {
-    Winston.debug(`About to exec command ${command}`);
-    const stdout = await runExecFailOnStderr(command, true);
-    switch (output) {
-        case azCommandOutputs.json: {
-            const jsonOut = JSON.parse(stdout);
-            Winston.debug("Exec command %s with output %j", command, jsonOut);
-            return JSON.parse(stdout);
-        }
-        case azCommandOutputs.string: {
-            Winston.debug("Exec command %s with output %s", command, stdout);
-            return stdout;
-        }
-        default: {
-            throw new Error("Unsupported output type: " + output);
-        }
-    }
+    return await retryAfterFailure(async () => {
+        return await executeAzCommand(command, output);
+    }, retriesAfterFailure);
 }
 
 export async function azAppServiceListLocations()
@@ -207,9 +217,9 @@ export function isClass(obj: object, classObj: any): boolean {
     return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }
 
-export function validateResource(resourcename: string, length: number) {
-    return ((resourcename.length < length) &&
-            (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourcename)));
+export function validateResource(resourceName: string, length: number) {
+    return ((resourceName.length < length) &&
+            (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourceName)));
 }
 
 /**

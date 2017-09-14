@@ -184,7 +184,7 @@ ${await baseDeployWebApp.getDeployedURL()}`);
 }
 
 export function setLoggingIfNeeded(argv: any) {
-  if (argv.version) {
+  if (argv.verbose) {
     Winston.add(Winston.transports.File, {
       filename: "log.txt",
       level: "silly"
