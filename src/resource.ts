@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
 
@@ -31,18 +31,18 @@ export abstract class Resource {
  contains only alphanumeric characters and start with a letter\n` );
         }
 
-        if (fs.existsSync(targetDirectoryPath)) {
+        if (await fs.pathExists(targetDirectoryPath)) {
           console.log(`Directory with name ${serviceName} already exists.`);
           process.exit(-1);
         }
 
-        await fs.ensureDirAsync(targetDirectoryPath);
+        await fs.ensureDir(targetDirectoryPath);
         const assetPath =
             Path.join(__dirname,
                         "..",
                         "assets",
                         Path.basename(fileName, ".js"));
-        await fs.copyAsync(assetPath, targetDirectoryPath);
+        await fs.copy(assetPath, targetDirectoryPath);
         await CommonUtilities.npmSetup(targetDirectoryPath);
     }
 
@@ -69,7 +69,7 @@ export abstract class Resource {
         return this;
     }
 
-    protected get baseName() {
+    public get baseName() {
         return this.baseNameProperty;
     }
 

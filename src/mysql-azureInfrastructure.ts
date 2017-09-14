@@ -1,11 +1,11 @@
 import * as Crypto from "crypto";
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as GeneratePassword from "generate-password";
 import * as Path from "path";
 import * as Winston from "winston";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
-import * as data from "./data.json";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
@@ -85,7 +85,7 @@ export class MySqlAzureInfrastructure extends MySqlAzure
     }
     public async setup(): Promise<void> {
         return await MySqlAzureInfrastructure.internalSetup(__filename,
-                                   this.targetDirectoryPath, (<any>data).MySQLNameLength);
+                this.targetDirectoryPath, (data.data as any).MySQLNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
@@ -158,7 +158,7 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
                 const scriptPath =
                     Path.isAbsolute(checkScriptPath) ? checkScriptPath :
                         Path.join(this.targetDirectoryPath, checkScriptPath);
-                if (await fs.existsAsync(scriptPath) === false) {
+                if (await fs.pathExists(scriptPath) === false) {
                     throw new Error(`Submitted mySql initialization script, \
     located at ${scriptPath} for ${this.baseName} does not exist.`);
                 }

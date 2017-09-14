@@ -1,4 +1,4 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
@@ -44,14 +44,14 @@ function createInfraResource(resource: Resource.Resource,
 }
 
 export async function setup(rootPath: string, serviceName: string,
-                            serviceType: string) {
-    // Moving this code to internal setup 
+                            serviceType: string): Promise<string> {
+    // Moving this code to internal setup
     const targetPath = Path.join(rootPath, serviceName);
     // if (fs.existsSync(targetPath)) {
     //   console.log(`Directory with name ${serviceName} already exists.`);
     //   process.exit(-1);
     // }
-    // await fs.ensureDirAsync(targetPath);
+    // await fs.ensureDir(targetPath);
     let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {
@@ -69,6 +69,7 @@ export async function setup(rootPath: string, serviceName: string,
     }
     infraResource.initialize(null, targetPath);
     await infraResource.setup();
+    return targetPath;
 }
 
 // TODO: developmentDeploy is really just intended for Node WebAPPs so that
@@ -77,12 +78,14 @@ export async function setup(rootPath: string, serviceName: string,
 // NPM. But we really need to shove this into some kind of property bag
 // as the name and usage is confusing.
 export async function deployResources(
-                          rootOfDeploymentPath: string,
+                          currentWorkingDirectory: string,
                           deploymentType: Resource.DeployType,
                           developmentDeploy = false,
                           deleteResourceGroupBeforeDeploy = false)
                           : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
+    const rootOfDeploymentPath: string =
+      await CommonUtilities.findGitRootDir(currentWorkingDirectory);
     const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
     if (!(fs.existsSync(rootSleevePath))) {
       console.log("There is no sleeve.js in the root, \
@@ -132,7 +135,8 @@ this is not a properly configured project");
             await (resource as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure)
               .getBaseDeployClassInstance();
           console.log(
-`Web app is available at ${await baseDeployWebApp.getDeployedURL()}`);
+`Web app ${resource.baseName} is available at \
+${await baseDeployWebApp.getDeployedURL()}`);
         }
       }
     }

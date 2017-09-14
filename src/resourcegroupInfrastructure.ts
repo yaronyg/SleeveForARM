@@ -1,5 +1,5 @@
 import * as CommonUtilities from "./common-utilities";
-import * as data from "./data.json";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
@@ -40,7 +40,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
 
     public async setup(): Promise<void> {
         return await ResourceGroup.internalSetup(__filename,
-                this.targetDirectoryPath, (<any>data).ResourceGroupLength);
+            this.targetDirectoryPath, (data.data as any).ResourceGroupLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],

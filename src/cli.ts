@@ -1,9 +1,9 @@
-import * as fs from "fs-extra-promise";
+import * as fs from "fs-extra";
 import * as Path from "path";
 import * as Yargs from "yargs";
 import * as CliUtilities from "./cliUtilities";
 import * as CommonUtilities from "./common-utilities";
-import * as data from "./data.json";
+import * as data from "./data";
 import * as Resource from "./resource";
 
 // tslint:disable-next-line:no-unused-expression
@@ -20,17 +20,21 @@ Yargs
                       "assets",
                       "cliInit");
       if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
-                                              (<any>data).ProjectNameLength))){
+                              (data.data as any).ProjectNameLength))) {
       throw new Error(`Project name should be less than \
-${(<any>data).ProjectNameLength} characters, contains only \
+${(data.data as any).ProjectNameLength} characters, contains only \
 alphanumeric characters and start with a letter\n`);
-                                            }
-      await fs.copyAsync(assetPath, process.cwd());
+      }
+
+      await fs.copy(assetPath, process.cwd());
       await CommonUtilities.npmSetup(process.cwd());
       await CommonUtilities.executeOnSleeveResources(process.cwd(),
         (path) => {
           return CommonUtilities.npmSetup(path);
         });
+      if (await fs.pathExists(Path.join(process.cwd(), ".git")) === false) {
+        CommonUtilities.exec("git init", process.cwd());
+      }
     }
   )
   .command(
@@ -50,7 +54,10 @@ alphanumeric characters and start with a letter\n`);
     },
     async function(argv) {
       CliUtilities.setLoggingIfNeeded(argv);
-      CliUtilities.setup(process.cwd(), argv.serviceName, argv.serviceType);
+      const targetPath: string =
+        await CliUtilities.setup(process.cwd(), argv.serviceName,
+                                 argv.serviceType);
+      console.log(`Resource created in ${targetPath}`);
     }
   )
   .command(
