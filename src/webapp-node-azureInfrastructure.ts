@@ -3,6 +3,7 @@ import * as Path from "path";
 import * as Util from "util";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import PromiseGate from "./promiseGate";
@@ -44,15 +45,14 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     }
 
     public async setup(): Promise<void> {
-        return await WebappNodeAzure.internalSetup(__filename,
-                                             this.targetDirectoryPath);
+       return await WebappNodeAzure.internalSetup(__filename,
+                this.targetDirectoryPath, (data.data as any).WebAppNameLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
                     : Promise<this> {
         await super.hydrate(resourcesInEnvironment, deploymentType);
-
         if (this.webAppDNSName === undefined) {
             this.webAppDNSName = this.resourceGroup.resourceGroupName +
                                  this.baseName;

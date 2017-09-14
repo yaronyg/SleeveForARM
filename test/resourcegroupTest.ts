@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as fs from "fs-extra";
 import "mocha";
 import * as Path from "path";
+import * as ReplaceInFile from "replace-in-file";
 import * as CommonUtilities from "../src/common-utilities";
 import * as Resource from "../src/resource";
 import ResourceGroup from "../src/resourcegroup";
@@ -27,12 +27,18 @@ describe("Resource group", () => {
 
     it("should create a resource group", async () => {
         const resourceGroupPath =
-            Path.join(testingDirFullPath, "resourceGroup");
-        await fs.emptyDir(resourceGroupPath);
+            Path.join(testingDirFullPath, "rg");
         const resourceGroupInfra =
             new ResourceGroupInfrastructure.ResourceGroupInfrastructure();
         resourceGroupInfra.initialize(null, resourceGroupPath);
         await resourceGroupInfra.setup();
+        const replaceInFileOptions = {
+            files: Path.join(resourceGroupPath, "sleeve.js"),
+            from: /resourcegroupAzure\(\);/,
+            // tslint:disable-next-line:max-line-length
+            to: "resourcegroupAzure().setDataCenter(DataCenterNames.SouthCentralUS);"
+        };
+        await ReplaceInFile(replaceInFileOptions);
         await CommonUtilities
             .exec("npm link sleeveforarm", resourceGroupPath);
         await CommonUtilities

@@ -1,6 +1,7 @@
 import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
+import * as Data from "./data";
 
 /*
  * In our code we take DC names returned by AZ and
@@ -59,12 +60,29 @@ export enum ResourcesWeSupportSettingUp {
 
 export abstract class Resource {
     protected static async internalSetup(fileName: string,
-                                         targetDirectoryPath: string)
+                                         targetDirectoryPath: string,
+                                         maximumNameLength: number,
+                                         isAResourceGroup: boolean = false)
                                          : Promise<void> {
-        if (!(await fs.pathExists(targetDirectoryPath))) {
+        const serviceName = Path.basename(targetDirectoryPath);
+        const availableChars = maximumNameLength
+            - Data.data.DataCenterAcronymLength
+            - Data.data.DeploymentTypeIdLength
+            - (isAResourceGroup ? 0 : Data.data.ResourceGroupLength);
+        if (!(await CommonUtilities.validateResource(
+                    (serviceName), availableChars))) {
             throw new Error(
-                "We expect the caller to create the directory for us");
+                `The name of the resource ${Path.basename(targetDirectoryPath)}\
+ should be less than ${availableChars} characters,\
+ contains only alphanumeric characters and start with a letter\n` );
         }
+
+        if (await fs.pathExists(targetDirectoryPath)) {
+          console.log(`Directory with name ${serviceName} already exists.`);
+          process.exit(-1);
+        }
+
+        await fs.ensureDir(targetDirectoryPath);
         const assetPath =
             Path.join(__dirname,
                         "..",

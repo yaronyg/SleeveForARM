@@ -3,6 +3,7 @@ import * as Path from "path";
 import * as ReplaceInFile from "replace-in-file";
 import * as Winston from "winston";
 import * as CommonUtilities from "./common-utilities";
+import * as Data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import * as KeyVaultInfrastructure from "./keyvaultInfrastructure";
@@ -50,13 +51,20 @@ export async function init(currentWorkingDirectory: string) {
                 "..",
                 "assets",
                 "cliInit");
+  if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
+                              (Data.data as any).ProjectNameLength))) {
+      throw new Error(`Project name should be less than \
+${(Data.data as any).ProjectNameLength} characters, contains only \
+alphanumeric characters and start with a letter\n`);
+  }
+
   await fs.copy(assetPath, currentWorkingDirectory);
   const locations = await CommonUtilities.azAppServiceListLocations();
   const dataCenterEnum: string = locations[0].name.replace(/ /g, "");
   const replaceInFileOptions = {
     files: Path.join(currentWorkingDirectory, "sleeve.js"),
     from: /XXXX/,
-    to: `resource.DataCenterNames.${dataCenterEnum}`
+    to: `DataCenterNames.${dataCenterEnum}`
   };
   await ReplaceInFile(replaceInFileOptions);
   await CommonUtilities.npmSetup(currentWorkingDirectory);
@@ -76,11 +84,6 @@ export async function setup(currentWorkingDirectory: string,
     const rootPath: string =
       await CommonUtilities.findGitRootDir(currentWorkingDirectory);
     const targetPath = Path.join(rootPath, serviceName);
-    if (fs.existsSync(targetPath)) {
-      console.log(`Directory with name ${serviceName} already exists.`);
-      process.exit(-1);
-    }
-    await fs.ensureDir(targetPath);
     let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {
@@ -129,7 +132,15 @@ this is not a properly configured project");
     await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
                                          deploymentType);
     if (deleteResourceGroupBeforeDeploy) {
-      await rootResourceGroupInfra.deleteResource();
+      try {
+        await rootResourceGroupInfra.deleteResource();
+      } catch (err) {
+        // We get an error if we try to delete a resource group that
+        // doesn't exist. But in this case that isn't an error.
+        if (!err.message.includes("could not be found.")) {
+          throw err;
+        }
+      }
     }
     resourcesInEnvironment.push(rootResourceGroupInfra);
 
