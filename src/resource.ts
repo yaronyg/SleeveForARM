@@ -1,6 +1,47 @@
 import * as fs from "fs-extra";
 import * as Path from "path";
 import * as CommonUtilities from "./common-utilities";
+import * as Data from "./data";
+
+/*
+ * In our code we take DC names returned by AZ and
+ * use it to generate enum values. So it's important
+ * that the enum values are just the DC name with
+ * spaces removed.
+ */
+
+/**
+ * The names of data centers supported by Azure. Please
+ * note that not all Azure Accounts have access to all data centers.
+ */
+export enum DataCenterNames {
+    EastAsia = "East Asia",
+    SoutheastAsia = "Southeast Asia",
+    CentralUS = "Central US",
+    EastUS = "East US",
+    EastUS2 = "East US 2",
+    WestUS = "West US",
+    NorthCentralUS = "North Central US",
+    SouthCentralUS = "South Central US",
+    NorthEurope = "North Europe",
+    WestEurope = "West Europe",
+    JapanWest = "Japan West",
+    JapanEast = "Japan East",
+    BrazilSouth = "Brazil South",
+    AustraliaEast = "Australia East",
+    AustraliaSoutheast = "Australia Southeast",
+    SouthIndia = "South India",
+    CentralIndia = "Central India",
+    WestIndia = "West India",
+    CanadaCentral = "Canada Central",
+    CanadaEast = "Canada East",
+    UKSouth = "UK South",
+    UKWest = "UK West",
+    WestCentralUS = "West Central US",
+    WestUS2 = "West US 2",
+    KoreaCentral = "Korea Central",
+    KoreaSouth = "Korea South"
+}
 
 /**
  * We use the first character of the string value
@@ -19,12 +60,29 @@ export enum ResourcesWeSupportSettingUp {
 
 export abstract class Resource {
     protected static async internalSetup(fileName: string,
-                                         targetDirectoryPath: string)
+                                         targetDirectoryPath: string,
+                                         maximumNameLength: number,
+                                         isAResourceGroup: boolean = false)
                                          : Promise<void> {
-        if (!(await fs.pathExists(targetDirectoryPath))) {
+        const serviceName = Path.basename(targetDirectoryPath);
+        const availableChars = maximumNameLength
+            - Data.data.DataCenterAcronymLength
+            - Data.data.DeploymentTypeIdLength
+            - (isAResourceGroup ? 0 : Data.data.ResourceGroupLength);
+        if (!(await CommonUtilities.validateResource(
+                    (serviceName), availableChars))) {
             throw new Error(
-                "We expect the caller to create the directory for us");
+                `The name of the resource ${Path.basename(targetDirectoryPath)}\
+ should be less than ${availableChars} characters,\
+ contains only alphanumeric characters and start with a letter\n` );
         }
+
+        if (await fs.pathExists(targetDirectoryPath)) {
+          console.log(`Directory with name ${serviceName} already exists.`);
+          process.exit(-1);
+        }
+
+        await fs.ensureDir(targetDirectoryPath);
         const assetPath =
             Path.join(__dirname,
                         "..",

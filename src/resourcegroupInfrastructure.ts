@@ -1,4 +1,5 @@
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
@@ -15,7 +16,6 @@ export class BaseDeployResourceGroupInfrastructure {
 export class ResourceGroupInfrastructure extends ResourceGroup
     // tslint:disable-next-line:max-line-length
     implements IInfrastructure.IInfrastructure<BaseDeployResourceGroupInfrastructure> {
-    private location: string;
     private resourceGroupNameProperty: string;
     private readonly promiseGate = new PromiseGate();
 
@@ -39,19 +39,20 @@ export class ResourceGroupInfrastructure extends ResourceGroup
 
     public async setup(): Promise<void> {
         return await ResourceGroup.internalSetup(__filename,
-                this.targetDirectoryPath);
+            this.targetDirectoryPath, (data.data as any).ResourceGroupLength,
+            true);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
                     : Promise<this> {
         await super.hydrate(resourcesInEnvironment, deploymentType);
-        if (this.location === undefined) {
-            const locations = await CommonUtilities.azAppServiceListLocations();
-            this.location = locations[0].name;
+        if (this.dataCenter === undefined) {
+            throw new Error(
+"setDataCenter in root sleeve.js file MUST be set to a DC name");
         }
 
-        const locationAcronym = this.location.split(" ")
+        const locationAcronym = this.dataCenter.split(" ")
         .reduce((output, word) => {
             return output + word[0];
         }, "");
@@ -72,7 +73,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
         try {
             await CommonUtilities.runAzCommand(
 `az group create --name ${this.resourceGroupName} \
---location "${this.location}"`);
+--location "${this.dataCenter}"`);
 
             this.promiseGate.openGateSuccess(
                 new BaseDeployResourceGroupInfrastructure(this));

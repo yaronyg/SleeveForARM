@@ -1,4 +1,5 @@
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import KeyVault from "./keyvault";
 import PromiseGate from "./promiseGate";
@@ -32,7 +33,8 @@ export class KeyVaultInfrastructure
     }
     public async setup(): Promise<void> {
         return await KeyVaultInfrastructure
-            .internalSetup(__filename, this.targetDirectoryPath);
+            .internalSetup(__filename, this.targetDirectoryPath,
+                (data.data as any).KeyVaultNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)
@@ -43,7 +45,6 @@ export class KeyVaultInfrastructure
             this.keyVaultFullName = this.resourceGroup.resourceGroupName +
                     this.baseName;
         }
-
         return this;
     }
     public async deployResource(): Promise<this> {

@@ -207,6 +207,11 @@ export function isClass(obj: object, classObj: any): boolean {
     return Object.getPrototypeOf(obj).constructor.name === classObj.name;
 }
 
+export function validateResource(resourcename: string, length: number) {
+    return ((resourcename.length < length) &&
+            (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourcename)));
+}
+
 /**
  * Walks up the directory hierarchy look for the root of a GIT
  * project.
