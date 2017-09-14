@@ -5,6 +5,7 @@ import * as Path from "path";
 import * as Winston from "winston";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
+import * as data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
 import INamePassword from "./INamePassword";
 import IStorageResource from "./IStorageResource";
@@ -13,9 +14,6 @@ import MySqlAzure from "./mysql-azure";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
 import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
-
-const MySQLNameLength: number = 49
-;
 
 export interface ISqlCreateResult {
     fullyQualifiedDomainName: string;
@@ -87,7 +85,7 @@ export class MySqlAzureInfrastructure extends MySqlAzure
     }
     public async setup(): Promise<void> {
         return await MySqlAzureInfrastructure.internalSetup(__filename,
-                                   this.targetDirectoryPath, MySQLNameLength);
+                this.targetDirectoryPath, (data.data as any).MySQLNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)

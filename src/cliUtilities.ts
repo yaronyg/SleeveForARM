@@ -43,17 +43,15 @@ function createInfraResource(resource: Resource.Resource,
   return infraResource;
 }
 
-export async function setup(currentWorkingDirectory: string,
-                            serviceName: string,
+export async function setup(rootPath: string, serviceName: string,
                             serviceType: string): Promise<string> {
-    const rootPath: string =
-      await CommonUtilities.findGitRootDir(currentWorkingDirectory);
+    // Moving this code to internal setup
     const targetPath = Path.join(rootPath, serviceName);
-    if (fs.existsSync(targetPath)) {
-      console.log(`Directory with name ${serviceName} already exists.`);
-      process.exit(-1);
-    }
-    await fs.ensureDir(targetPath);
+    // if (fs.existsSync(targetPath)) {
+    //   console.log(`Directory with name ${serviceName} already exists.`);
+    //   process.exit(-1);
+    // }
+    // await fs.ensureDir(targetPath);
     let infraResource: IInfrastructure.IInfrastructure<any>;
     switch (serviceType) {
       case Resource.ResourcesWeSupportSettingUp.MySqlAzure: {

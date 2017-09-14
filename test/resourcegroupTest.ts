@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as fs from "fs-extra";
 import "mocha";
 import * as Path from "path";
 import * as CommonUtilities from "../src/common-utilities";
@@ -28,7 +27,6 @@ describe("Resource group", () => {
     it("should create a resource group", async () => {
         const resourceGroupPath =
             Path.join(testingDirFullPath, "rg");
-        await fs.emptyDir(resourceGroupPath);
         const resourceGroupInfra =
             new ResourceGroupInfrastructure.ResourceGroupInfrastructure();
         resourceGroupInfra.initialize(null, resourceGroupPath);
