@@ -36,14 +36,16 @@ Pick some random 5 or 6 character name for your service.
 ```console
 > mkdir [The name you picked]
 > cd [The name you picked]
-> sleeveforarm init
+> sleeveforarm init -v
 ```
 
-The init command can take up to a minute or so to run. At the end we have a root sleeve.js file that can be used to change the default location that the service will deploy to. Make sure to use VSCode to edit the file so you can take advantage of auto-complete to set the desired data center. Please keep in mind that you don't need to touch the sleeve.js file, it wil just work. Only edit it if you want to. You will also see a package.json and node_modules, this provides support for Sleeve's environment. There will also be a directory called keyVault. This is a default keyVault we use for secrets.
+The init command can take up to a minute or so to run. Also note that the -v option will output a lot of very noisy information but it lets you see what's actually going on.
+
+Once the command is done we have a root sleeve.js file that can be used to change the default location that the service will deploy to. Make sure to use VSCode to edit the file so you can take advantage of auto-complete to set the desired data center. Please keep in mind that you don't need to touch the sleeve.js file, it wil just work. Only edit it if you want to. You will also see a package.json and node_modules, this provides support for Sleeve's environment. There will also be a directory called keyVault. This is a default keyVault we use for secrets.
 
 ```
-> sleeveforarm setup -t webapp-node -n webApp
-> sleeveforarm setup -t mySqlAzure -n data
+> sleeveforarm setup -t webapp-node -n webApp -v
+> sleeveforarm setup -t mySqlAzure -n data -v
 > cd data
 > notepad mysqlinit.txt
 ```
@@ -113,7 +115,7 @@ Again, if you don't have auto-save activated in VSCode then please make sure to 
 
 Now back to the console:
 ```console
-> sleeveforarm deploy -t dev
+> sleeveforarm deploy -t dev -v
 ```
 
 Now get some coffee because this part takes a while, about 4-5 minutes. What we are doing is creating a resource group, a key vault and a mySQL instance in Azure. We are not creating a web app because this is a dev deployment and we will run the webApp locally. We are also setting up the environment so that the webApp, running locally, will be able to find the mySQL instance in Azure.
@@ -133,7 +135,7 @@ Now let's put everything up into Azure.
 
 ```console
 > ctrl-c (to kill node)
-> sleeveforarm deploy -t prod
+> sleeveforarm deploy -t prod -v
 ```
 
 This command will also take 4-5 minutes. But when it's done we will have a full deployment running in Azure. The last line after the command will say something like "Web app is available at http://[the name you picked]scupwebapp.azurewebsites.net". You can hit that URL to see the fully functioning service. You should see "Hello A Name" as above.
