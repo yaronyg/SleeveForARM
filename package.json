@@ -1,6 +1,6 @@
 {
   "name": "sleeveforarm",
-  "version": "0.0.9",
+  "version": "0.0.15",
   "main": "src/sleveforarm.js",
   "description": "Making Azure Easy",
   "scripts": {
@@ -49,5 +49,5 @@
     "tslint": "5.7.0",
     "typescript": "2.4.2"
   },
-  "bin": "./src/sleeve.cmd"
+  "bin": "./src/sleeveforarm.cmd"
 }

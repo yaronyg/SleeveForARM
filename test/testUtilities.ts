@@ -29,7 +29,7 @@ export async function setupMochaTestLogging(
     });
     const sleeveCommandLocation =
             Path.join(testingDirFullPath, "..", "..", "..",
-                                        "src", "sleeve.cmd");
+                                        "src", "sleeveforarm.cmd");
     return [testingDirFullPath, sleeveCommandLocation];
 }
 

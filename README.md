@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS fooers (name VARCHAR(255));
 INSERT INTO fooers (name) VALUES ('A Name');
 ```
 
-Then save and exit notepad. 
+Then please save and exit notepad. 
 
 At this point to really get the Sleeve experience it would be best if you can open [The nane you picked] directory in VS Code. Then navigate to data/sleeve.js and open it. After "new MySqlAzure()" hit '.' and you should see autocomplete offering 'addMySqlInitialize'. Select that and pass in the argument "mysqlinit.txt". So the final line will look like:
 
@@ -136,7 +136,7 @@ Now let's put everything up into Azure.
 > sleeveforarm deploy -t prod
 ```
 
-This command will also take 4-5 minutes. But when it's done we will have a full deployment running in Azure. The last line after the command will say something like "Web app is available at http://testscupwebapp.azurewebsites.net". You can hit that URL to see the fully functioning service. You should see "Hello A Name" as above.
+This command will also take 4-5 minutes. But when it's done we will have a full deployment running in Azure. The last line after the command will say something like "Web app is available at http://[the name you picked]scupwebapp.azurewebsites.net". You can hit that URL to see the fully functioning service. You should see "Hello A Name" as above.
 
 So we have deployed exactly the same code in two completely different environments but everything works.
 

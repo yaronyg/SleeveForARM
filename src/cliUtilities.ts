@@ -59,6 +59,14 @@ alphanumeric characters and start with a letter\n`);
   }
 
   await fs.copy(assetPath, currentWorkingDirectory);
+
+  // NPM publish turns all .gitignore into .npmignore. For awhile it
+  // seemed that you could put in both a .gitignore and a .npmignore
+  // and the .gitignore would be ignored but no longer. So now we
+  // ship a .npmignore and then rename it after install.
+  await fs.move(Path.join(currentWorkingDirectory, ".npmignore"),
+                Path.join(currentWorkingDirectory, ".gitignore"));
+
   const locations = await CommonUtilities.azAppServiceListLocations();
   const dataCenterEnum: string = locations[0].name.replace(/ /g, "");
   const replaceInFileOptions = {
@@ -74,7 +82,7 @@ alphanumeric characters and start with a letter\n`);
   });
   if (await fs.pathExists(Path.join(currentWorkingDirectory, ".git"))
         === false) {
-  CommonUtilities.exec("git init", currentWorkingDirectory);
+    CommonUtilities.exec("git init", currentWorkingDirectory);
   }
 }
 
