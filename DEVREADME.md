@@ -14,9 +14,21 @@ Right now we only support developing and running on Windows. We will eventually 
    * Code Spell Checker - Because spelling errors are no fun.
    * Docker - Because eventually we'll be creating docker files file for CI/CD
    * TSLint - MUST HAVE - All code MUST be linted!
-* In VSCode go to launch.json and add "console":"integratedTerminal" to the Mocha tests work.
+* In VSCode go to launch.json, select node.js, hit Add Configuration, select Node.js: Mocha Tests, and add "console":"integratedTerminal" as a top level property so that Mocha tests will work.
 * In the depot run 'npm install' to install the dependencies and 'npm link' to hook the project up to the global environment.
 * We are a TypeScript project so you have to compile the project using TypeScript. We use VSCode and the easiest way to get things going is 'ctrl->shift->p' then type in 'Tasks: Run Task' and then hit return and select 'tsc: build - tsconfig.json'. This will start a new terminal window that will leave a build agent running that will automatically update the JS files any time the TS files are edited. But remember, if you exit VSCode the window goes away. I've also found that if the window is open for too long (especially when I put my laptop to sleep a few times) the agent can fail. That leads to really fun bugs where you fix something in TS and then the fix doesn't seem to exist. So checking that the agent is still running is always a good idea if something 'strange' happens.
+* To keep your sanity and not have to stare at a bunch of useless auto generated files, go to File->Preferences->Settings and type in files.exclude to see your file exclusion settings and set them to look like:
+```JSON
+"files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/*.js": { "when": "$(basename).ts"},
+        "**/*.js.map": true,
+        "**/*.d.ts": { "when": "$(basename).ts"}
+```
 
 ### What's up with NPM 4.6.1?
 There is a bug in NPM 5.3.0 (and the 5 series in general) that makes it not play along very well with linked modules which we need for development. Specifically what happens is that if we 'npm link sleeveforarm' into a test directory (after we executed npm link in the sleeveforarm local github clone) and then call 'npm install' there will be an error because the versions won't match. This is because our development code is (properly) looking for the new version and NPM install doesn't recognize that. I tried working around this by just using the same version (e.g. setting development to the same version that is published in NPM) but in that case npm install overwrites the linked local directory and replaces it with the one in NPM.
