@@ -39,7 +39,7 @@ export class ResourceGroupInfrastructure extends ResourceGroup
 
     public async setup(): Promise<void> {
         return await ResourceGroup.internalSetup(__filename,
-            this.targetDirectoryPath, (data.data as any).ResourceGroupLength,
+            this.targetDirectoryPath, data.data.ResourceGroupLength,
             true);
     }
 
