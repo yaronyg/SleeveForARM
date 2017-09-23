@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as Path from "path";
+import * as ReplaceInFile from "replace-in-file";
 import * as Request from "request-promise-native";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
@@ -39,6 +40,19 @@ describe("Web app Node Azure", () => {
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
+        // enable the CDN
+        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
+        const replaceInFileOptions = {
+            files: Path.join(pathTosleevejs, "sleeve.js"),
+            from: /module.exports = new webappNodeAzure\(\);/,
+            // tslint:disable-next-line:max-line-length
+            to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
+        };
+        // tslint:disable-next-line:max-line-length
+
+        await ReplaceInFile(replaceInFileOptions);
+        // await ReplaceInFile(replaceInFileOptions);
+
         // Set up our test
         const fooPath = Path.join(webAppSamplePath, "foo");
         await CommonUtilities.exec("npm install mysql2 --save",
@@ -69,18 +83,22 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
          await CliUtilities.deployResources(webAppSamplePath, deploymentType,
                                            true, true);
 
-        const webApp = resourcesInEnvironment.find((resource) =>
+        const webApp =
+        (resourcesInEnvironment.find((resource) =>
             CommonUtilities.isClass(resource,
-                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure));
+                // tslint:disable-next-line:max-line-length
+                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure))) as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure;
 
         if (webApp === undefined) {
             throw new Error("We don't have a webApp in our results!");
         }
 
         const baseDeployWebApp = await webApp.getBaseDeployClassInstance();
-
         const deployedURL = await baseDeployWebApp.getDeployedURL();
+        const tryCDN = deployedURL + "/trycdn";
+
         await getTheResult(deployedURL);
+        await getTheResult(tryCDN);
     });
 
     async function waitAndTryAgain(url: string, resolve: () => void,

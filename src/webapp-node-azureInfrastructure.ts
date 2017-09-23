@@ -185,6 +185,39 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 --query url --output tsv`, CommonUtilities.azCommandOutputs.string);
 
         await this.deployToWebApp(developmentDeploy);
+
+        if (this.DefaultCDNSKU !== undefined) {
+
+            const weburl = webAppCreateResult.defaultHostName;
+            const profileName = this.webAppDNSName + "cdnprofile";
+            const endpoint = this.webAppDNSName;
+
+            const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
+
+            // tslint:disable-next-line:max-line-length
+            const cdnsettingname = ServiceEnvironment.cdnprefix + cdnsettingvalue;
+
+            await CommonUtilities.runAzCommand(
+                `az cdn profile create \
+                --name ${profileName} \
+                --resource-group ${this.resourceGroup.resourceGroupName} \
+                --sku ${this.DefaultCDNSKU}`);
+            await CommonUtilities.runAzCommand(
+                    `az cdn endpoint create \
+                    --name ${endpoint} \
+                    --origin ${weburl} \
+                    --resource-group ${this.resourceGroup.resourceGroupName} \
+                    --origin-host-header ${weburl} \
+                    --profile-name ${profileName}`,
+                    CommonUtilities.azCommandOutputs.json);
+
+            await CommonUtilities.runAzCommand(
+                `az webapp config appsettings set \
+                --name ${this.webAppDNSName} \
+                --resource-group ${this.resourceGroup.resourceGroupName} \
+                --settings ${cdnsettingname}`);
+
+        }
     }
 
     /**

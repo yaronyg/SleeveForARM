@@ -32,3 +32,7 @@ export function getMySqlConnectionObject(mySqlServerName: string,
 
     return baseConnectionObject;
 }
+
+export function getCDNEndpoint() {
+    return process.env[ServiceEnvironmentUtilities.cdnprefix];
+}
