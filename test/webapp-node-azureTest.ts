@@ -28,7 +28,7 @@ describe("Web app Node Azure", () => {
             testingDirFullPath, this);
     });
 
-    it.only("should be deployable", async function() {
+    it("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(15 * 60 * 1000);
         const webAppSamplePath = Path.join(testingDirFullPath,
