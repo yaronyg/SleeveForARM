@@ -17,19 +17,22 @@ describe("Web app Node Azure", () => {
 
     let testingDirFullPath: string;
     let sleeveCommandLocation: string;
+    let resourcesInEnvironment: CliUtilities.InfraResourceType[];
     beforeEach(async function() {
         [testingDirFullPath, sleeveCommandLocation] =
             await TestUtilities.setupMochaTestLogging(this);
     });
 
-    afterEach(function() {
-        TestUtilities.tearDownMochaTestLogging();
+    afterEach(async function() {
+        await TestUtilities.tearDownMochaTestLogging(resourcesInEnvironment,
+            testingDirFullPath, this);
     });
 
-    it("should be deployable", async function() {
+    it.only("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(15 * 60 * 1000);
-        const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
+        const webAppSamplePath = Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
         await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
@@ -65,9 +68,9 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
-        const resourcesInEnvironment =
+        resourcesInEnvironment =
          await CliUtilities.deployResources(webAppSamplePath, deploymentType,
-                                           true, true);
+                                           true);
 
         const webApp = resourcesInEnvironment.find((resource) =>
             CommonUtilities.isClass(resource,
@@ -126,7 +129,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
     it("should run locally", async function() {
         const deploymentType = Resource.DeployType.LocalDevelopment;
         this.timeout(10 * 60 * 1000);
-        const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
+        const webAppSamplePath = Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
         await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
@@ -137,8 +141,9 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
+        resourcesInEnvironment =
         await CliUtilities.deployResources(webAppSamplePath, deploymentType,
-                                            false, true);
+                                            false);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
 

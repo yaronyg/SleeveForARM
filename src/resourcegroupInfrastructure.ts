@@ -85,9 +85,9 @@ export class ResourceGroupInfrastructure extends ResourceGroup
     }
 
     public async deleteResource(): Promise<this> {
-        if (this.promiseGate.isGateOpen) {
+        if (!this.promiseGate.isGateOpen) {
             throw new Error(
-"Delete is intended to clean up before we deploy, at least for now.");
+"Delete is intended to clean up after we deploy.");
         }
 
         try {

@@ -15,13 +15,15 @@ describe("mySQL Azure", () => {
 
     let testingDirFullPath: string;
     let sleeveCommandLocation: string;
+    let resourcesInEnvironment: CliUtilities.InfraResourceType[];
     beforeEach(async function() {
         [testingDirFullPath, sleeveCommandLocation] =
             await TestUtilities.setupMochaTestLogging(this);
     });
 
-    afterEach(function() {
-        TestUtilities.tearDownMochaTestLogging();
+    afterEach(async function() {
+        await TestUtilities.tearDownMochaTestLogging(resourcesInEnvironment,
+            testingDirFullPath, this);
     });
 
     const sqlFile =
@@ -42,7 +44,8 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
         const deploymentType = Resource.DeployType.Production;
         this.timeout(10 * 60 * 1000);
 
-        const mySqlSamplePath = Path.join(testingDirFullPath, "mySQL");
+        const mySqlSamplePath = Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
 
         await fs.emptyDir(mySqlSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
@@ -65,9 +68,9 @@ module.exports = new MySqlAzure().addMySqlInitializationScript("sqlFile");\n';
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
-        const resourcesInEnvironment =
+        resourcesInEnvironment =
             await CliUtilities.deployResources(mySqlSamplePath, deploymentType,
-                                                false, true);
+                                                false);
 
         const sqlResource =
             resourcesInEnvironment.find((resource) =>
