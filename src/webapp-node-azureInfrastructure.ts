@@ -1,6 +1,5 @@
 import * as FS from "fs-extra";
 import * as Path from "path";
-import * as Util from "util";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as data from "./data";
@@ -223,9 +222,11 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await FS.emptyDir(gitCloneDepotParentPath);
 
-        await CommonUtilities.exec(
-                Util.format(`git clone ${gitURL}`),
-                    gitCloneDepotParentPath);
+        await CommonUtilities.retryAfterFailure<CommonUtilities.IExecOutput>(
+                async () => {
+            return await CommonUtilities.exec(`git clone ${gitURL}`,
+                                              gitCloneDepotParentPath);
+        }, 60);
 
         const directoryContents = await FS.readdir(gitCloneDepotPath);
 

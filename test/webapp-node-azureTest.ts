@@ -83,11 +83,12 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await getTheResult(deployedURL);
     });
 
-    async function waitAndTryAgain(url: string, resolve: () => void,
+    async function waitAndTryAgain(url: string, httpGetResult: string,
+                                   resolve: () => void,
                                    reject: (err: any) => void) {
         setTimeout(async function() {
             try {
-                await getTheResult(url);
+                await getTheResult(url, httpGetResult);
                 resolve();
             } catch (err) {
                 reject(err);
@@ -95,15 +96,17 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         }, 5000);
     }
 
-    async function getTheResult(url: string) {
+    async function getTheResult(url: string,
+                                httpGetResult: string = "") {
+        httpGetResult = httpGetResult ? httpGetResult : "A Name";
         return new Promise(async function(resolve, reject) {
             try {
                 const getResult = await Request.get(url);
                 if (getResult === "Not Set!") {
-                    waitAndTryAgain(url, resolve, reject);
+                    waitAndTryAgain(url, httpGetResult, resolve, reject);
                 } else {
                     try {
-                        expect(getResult).equals("A Name");
+                        expect(getResult).equals(httpGetResult);
                         resolve();
                     } catch (err) {
                         reject(err);
@@ -115,7 +118,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                 // the test itself times out.
                 if (err.error.errno === "ECONNREFUSED") {
                     // We made the request too quickly
-                    waitAndTryAgain(url, resolve, reject);
+                    waitAndTryAgain(url, httpGetResult, resolve, reject);
                     return;
                 }
                 throw err;
