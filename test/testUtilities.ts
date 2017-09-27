@@ -57,7 +57,7 @@ await (resource as ResourceGroupInfrastructure.ResourceGroupInfrastructure)
         try {
             fs.removeSync(testingDirFullPath);
         } catch (err) {
-            if (err.code !== "ENOTEMPTY") {
+            if (err.code !== "ENOTEMPTY" && err.code !== "EBUSY") {
                 // The log file is still trying to write which
                 // screws up the delete but it's o.k., all the
                 // files are gone
