@@ -41,3 +41,5 @@ export function setProcessEnv() {
 export const resourceHostSuffix = "_host";
 export const resourceUserSuffix = "_user";
 export const resourcePasswordSuffix = "_password";
+export const aiEnvironmentVariableName =
+    "APPINSIGHTS_INSTRUMENTATIONKEY";

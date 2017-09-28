@@ -85,7 +85,7 @@ export class MySqlAzureInfrastructure extends MySqlAzure
     }
     public async setup(): Promise<void> {
         return await MySqlAzureInfrastructure.internalSetup(__filename,
-                this.targetDirectoryPath, (data.data as any).MySQLNameLength);
+                this.targetDirectoryPath, data.data.MySQLNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)

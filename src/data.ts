@@ -1,4 +1,5 @@
 export const data = {
+    ApplicationInsightsLength: 50,
     DataCenterAcronymLength: 3,
     DeploymentTypeIdLength: 1,
     KeyVaultNameLength : 24,

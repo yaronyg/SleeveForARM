@@ -2,6 +2,9 @@ import * as fs from "fs-extra";
 import * as Path from "path";
 import * as ReplaceInFile from "replace-in-file";
 import * as Winston from "winston";
+import ApplicationInsights from "./applicationInsights";
+// tslint:disable-next-line:max-line-length
+import * as ApplicationInsightsInfrastructure from "./applicationInsightsInfrastructure";
 import * as CommonUtilities from "./common-utilities";
 import * as Data from "./data";
 import * as IInfrastructure from "./IInfrastructure";
@@ -38,6 +41,10 @@ function createInfraResource(resource: Resource.Resource,
   if (CommonUtilities.isClass(resource, MySqlAzure)) {
     infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
   }
+  if (CommonUtilities.isClass(resource, ApplicationInsights)) {
+    infraResource =
+      new ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure();
+  }
   if (infraResource === null) {
     throw new Error("Unrecognized resource type!");
   }
@@ -52,14 +59,26 @@ export async function init(currentWorkingDirectory: string) {
                 "assets",
                 "cliInit");
   if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
-                              (Data.data as any).ProjectNameLength))) {
+                              Data.data.ProjectNameLength))) {
       throw new Error(`Project name should be less than \
-${(Data.data as any).ProjectNameLength} characters, contains only \
+${Data.data.ProjectNameLength} characters, contains only \
 alphanumeric characters and start with a letter\n`);
   }
 
   await fs.copy(assetPath, currentWorkingDirectory);
 
+  const aiInfrastructure =
+    new ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure();
+  const aiSleevePath = Path.join(currentWorkingDirectory, "AppInsights");
+  await aiInfrastructure
+    .initialize(null, aiSleevePath)
+    .setup();
+  const aiReplaceOptions = {
+    files: Path.join(aiSleevePath, "sleeve.js"),
+    from: /new applicationInsights\(\);/,
+    to: "new applicationInsights().setGlobalDefault(true);"
+  };
+  await ReplaceInFile(aiReplaceOptions);
   // NPM publish turns all .gitignore into .npmignore. For awhile it
   // seemed that you could put in both a .gitignore and a .npmignore
   // and the .gitignore would be ignored but no longer. So now we

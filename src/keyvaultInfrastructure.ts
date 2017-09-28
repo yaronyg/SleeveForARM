@@ -34,7 +34,7 @@ export class KeyVaultInfrastructure
     public async setup(): Promise<void> {
         return await KeyVaultInfrastructure
             .internalSetup(__filename, this.targetDirectoryPath,
-                (data.data as any).KeyVaultNameLength);
+                data.data.KeyVaultNameLength);
     }
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
                          deploymentType: Resource.DeployType)

@@ -137,15 +137,16 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
-        // tslint:disable-next-line:max-line-length
-        await CommonUtilities.exec(`${sleeveCommandLocation} setup -t webapp-node -n foo`,
+        // await CliUtilities.init(webAppSamplePath);
+        await CommonUtilities.exec(
+`${sleeveCommandLocation} setup -t webapp-node -n foo`,
             webAppSamplePath);
 
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         resourcesInEnvironment =
-        await CliUtilities.deployResources(webAppSamplePath, deploymentType,
+            await CliUtilities.deployResources(webAppSamplePath, deploymentType,
                                             false);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);

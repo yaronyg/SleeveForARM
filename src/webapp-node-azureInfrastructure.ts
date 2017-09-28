@@ -1,5 +1,7 @@
 import * as FS from "fs-extra";
 import * as Path from "path";
+// tslint:disable-next-line:max-line-length
+import * as ApplicationInsightsInfrastructure from "./applicationInsightsInfrastructure";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as data from "./data";
@@ -45,7 +47,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async setup(): Promise<void> {
        return await WebappNodeAzure.internalSetup(__filename,
-                this.targetDirectoryPath, (data.data as any).WebAppNameLength);
+                this.targetDirectoryPath, data.data.WebAppNameLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
@@ -68,6 +70,12 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async deployResource(developmentDeploy = false): Promise<this> {
         await this.resourceGroup.getBaseDeployClassInstance();
+        const aiResource = CommonUtilities.findGlobalDefaultResourceByType(
+            this.resourcesInEnvironment,
+            ApplicationInsightsInfrastructure
+                // tslint:disable-next-line:max-line-length
+                .ApplicationInsightsInfrastructure) as ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure;
+        const aiKeyIDPromise = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
         const storageResources =
             CommonUtilities.findInfraResourcesByInterface<IStorageResource>(
                 this.resourcesInEnvironment,
@@ -81,8 +89,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await (this.deploymentType === Resource.DeployType.Production ?
             this.deployToProduction(developmentDeploy,
-                storagePromisesToWaitFor) :
-            this.deployToDev(storagePromisesToWaitFor));
+                storagePromisesToWaitFor, aiKeyIDPromise) :
+            this.deployToDev(storagePromisesToWaitFor, aiKeyIDPromise));
 
         this.promiseGate
             .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
@@ -98,7 +106,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             });
     }
     private async deployToDev(storagePromisesToWaitFor
-            : Array<Promise<BaseDeployStorageResource>>) {
+            : Array<Promise<BaseDeployStorageResource>>,
+                              aiKeyIDPromise: Promise<string>) {
         const baseStorageResources: BaseDeployStorageResource[] =
              await Promise.all(storagePromisesToWaitFor);
 
@@ -108,6 +117,10 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                 [...environmentVariablesArray,
                  ...baseStorageResource.getEnvironmentVariables()];
         }
+
+        const aiKey = await aiKeyIDPromise;
+        environmentVariablesArray.push(
+            [ServiceEnvironment.aiEnvironmentVariableName, aiKey]);
 
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
@@ -126,7 +139,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     private async deployToProduction(
         developmentDeploy: boolean,
         storagePromisesToWaitFor
-            : Array<Promise<BaseDeployStorageResource>>) {
+            : Array<Promise<BaseDeployStorageResource>>,
+        aiKeyIDPromise: Promise<string>) {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const webPromise =
             CommonUtilities.runAzCommand(
@@ -167,6 +181,10 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         for (const variablePair of environmentVariablesArray) {
             environmentalVariables += `${variablePair[0]}=${variablePair[1]} `;
         }
+
+        const aiKeyId = await aiKeyIDPromise;
+        environmentalVariables +=
+`${ServiceEnvironment.aiEnvironmentVariableName}=${aiKeyId}`;
 
         if (environmentalVariables !== "") {
             secondStepPromises.push(CommonUtilities.runAzCommand(
