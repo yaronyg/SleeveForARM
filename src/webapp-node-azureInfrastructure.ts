@@ -98,6 +98,11 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                 return baseClass;
             });
     }
+
+    public isCDNEnabled(): boolean {
+        return this.DefaultCDNSKU !== undefined;
+    }
+
     private async deployToDev(storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>) {
         const baseStorageResources: BaseDeployStorageResource[] =
@@ -187,37 +192,37 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         await this.deployToWebApp(developmentDeploy);
 
         if (this.DefaultCDNSKU !== undefined) {
-
-            const weburl = webAppCreateResult.defaultHostName;
-            const profileName = this.webAppDNSName + "cdnprofile";
-            const endpoint = this.webAppDNSName;
-
-            const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
-
-            // tslint:disable-next-line:max-line-length
-            const cdnsettingname = ServiceEnvironment.cdnprefix + cdnsettingvalue;
-
-            await CommonUtilities.runAzCommand(
-                `az cdn profile create \
-                --name ${profileName} \
-                --resource-group ${this.resourceGroup.resourceGroupName} \
-                --sku ${this.DefaultCDNSKU}`);
-            await CommonUtilities.runAzCommand(
-                    `az cdn endpoint create \
-                    --name ${endpoint} \
-                    --origin ${weburl} \
-                    --resource-group ${this.resourceGroup.resourceGroupName} \
-                    --origin-host-header ${weburl} \
-                    --profile-name ${profileName}`,
-                    CommonUtilities.azCommandOutputs.json);
-
-            await CommonUtilities.runAzCommand(
-                `az webapp config appsettings set \
-                --name ${this.webAppDNSName} \
-                --resource-group ${this.resourceGroup.resourceGroupName} \
-                --settings ${cdnsettingname}`);
-
+            await this.enableCDN(webAppCreateResult);
         }
+
+    }
+    private async enableCDN(webAppCreateResult: any ) {
+
+        const profileName = this.webAppDNSName + "cdnprofile";
+        const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
+
+        const cdnsettingname = ServiceEnvironment.cdnprefix + cdnsettingvalue;
+
+        await CommonUtilities.runAzCommand(
+            `az cdn profile create \
+            --name ${profileName} \
+            --resource-group ${this.resourceGroup.resourceGroupName} \
+            --sku ${this.DefaultCDNSKU}`);
+        await CommonUtilities.runAzCommand(
+                `az cdn endpoint create \
+                --name ${this.webAppDNSName} \
+                --origin ${webAppCreateResult.defaultHostName} \
+                --resource-group ${this.resourceGroup.resourceGroupName} \
+                --origin-host-header ${webAppCreateResult.defaultHostName} \
+                --profile-name ${profileName}`,
+                CommonUtilities.azCommandOutputs.json);
+
+        await CommonUtilities.runAzCommand(
+            `az webapp config appsettings set \
+            --name ${this.webAppDNSName} \
+            --resource-group ${this.resourceGroup.resourceGroupName} \
+            --settings ${cdnsettingname}`);
+
     }
 
     /**

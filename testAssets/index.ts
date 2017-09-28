@@ -43,11 +43,13 @@ setUpDb();
 
 const server = http.createServer(function(request, response) {
 
+    // tslint:disable-next-line:max-line-length
+    // if the conming URL contains /trycdn, which means we like to try if the CDN works. then the request
+    // will be redirect to the CDN endpoint.
     const needReDirect = request.url.indexOf("cdn") > 0;
 
     if (needReDirect) {
          const urlToRedirect = ServiceEnvironment.getCDNEndpoint();
-        // tslint:disable-next-line:max-line-length
          response.writeHead(302, {Location: urlToRedirect});
          response.end();
 

@@ -48,10 +48,8 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
             // tslint:disable-next-line:max-line-length
             to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
         };
-        // tslint:disable-next-line:max-line-length
 
         await ReplaceInFile(replaceInFileOptions);
-        // await ReplaceInFile(replaceInFileOptions);
 
         // Set up our test
         const fooPath = Path.join(webAppSamplePath, "foo");
@@ -98,7 +96,10 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         const tryCDN = deployedURL + "/trycdn";
 
         await getTheResult(deployedURL);
-        await getTheResult(tryCDN);
+        // skip the CND testing given which is not needed at the dev machine.
+        if ( webApp.isCDNEnabled()) {
+            await getTheResult(tryCDN);
+        }
     });
 
     async function waitAndTryAgain(url: string, resolve: () => void,
