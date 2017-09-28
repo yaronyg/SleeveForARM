@@ -7,8 +7,8 @@ describe("Quick test of string munging", () => {
         await TestUtilities.setupMochaTestLogging(this);
     });
 
-    afterEach(() => {
-        TestUtilities.tearDownMochaTestLogging();
+    afterEach(async function() {
+        await TestUtilities.tearDownMochaTestLogging([], "foo", this);
     });
 
     it("should munge the URL right", () => {

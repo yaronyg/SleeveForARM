@@ -8,7 +8,7 @@ import * as Resource from "./resource";
 
 export class BaseDeployApplicationInsightsInfrastructure {
     constructor(readonly instrumentationKey: string) {}
-    public async getInstrumentationKey() {
+    public getInstrumentationKey(): string {
         return this.instrumentationKey;
     }
 }

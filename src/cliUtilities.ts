@@ -2,6 +2,7 @@ import * as fs from "fs-extra";
 import * as Path from "path";
 import * as ReplaceInFile from "replace-in-file";
 import * as Winston from "winston";
+import ApplicationInsights from "./applicationInsights";
 // tslint:disable-next-line:max-line-length
 import * as ApplicationInsightsInfrastructure from "./applicationInsightsInfrastructure";
 import * as CommonUtilities from "./common-utilities";
@@ -40,6 +41,10 @@ function createInfraResource(resource: Resource.Resource,
   if (CommonUtilities.isClass(resource, MySqlAzure)) {
     infraResource = new MySqlAzureInfrastructure.MySqlAzureInfrastructure();
   }
+  if (CommonUtilities.isClass(resource, ApplicationInsights)) {
+    infraResource =
+      new ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure();
+  }
   if (infraResource === null) {
     throw new Error("Unrecognized resource type!");
   }
@@ -69,12 +74,11 @@ alphanumeric characters and start with a letter\n`);
     .initialize(null, aiSleevePath)
     .setup();
   const aiReplaceOptions = {
-    files: aiSleevePath,
+    files: Path.join(aiSleevePath, "sleeve.js"),
     from: /new applicationInsights\(\);/,
     to: "new applicationInsights().setGlobalDefault(true);"
   };
   await ReplaceInFile(aiReplaceOptions);
-
   // NPM publish turns all .gitignore into .npmignore. For awhile it
   // seemed that you could put in both a .gitignore and a .npmignore
   // and the .gitignore would be ignored but no longer. So now we
@@ -135,8 +139,7 @@ export async function setup(currentWorkingDirectory: string,
 export async function deployResources(
                           currentWorkingDirectory: string,
                           deploymentType: Resource.DeployType,
-                          developmentDeploy = false,
-                          deleteResourceGroupBeforeDeploy = false)
+                          developmentDeploy = false)
                           : Promise<InfraResourceType[]> {
     const resourcesInEnvironment: InfraResourceType[] = [];
     const rootOfDeploymentPath: string =
@@ -154,17 +157,6 @@ this is not a properly configured project");
       createInfraResource(rootResourceGroup, rootOfDeploymentPath) as ResourceGroupInfrastructure.ResourceGroupInfrastructure;
     await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
                                          deploymentType);
-    if (deleteResourceGroupBeforeDeploy) {
-      try {
-        await rootResourceGroupInfra.deleteResource();
-      } catch (err) {
-        // We get an error if we try to delete a resource group that
-        // doesn't exist. But in this case that isn't an error.
-        if (!err.message.includes("could not be found.")) {
-          throw err;
-        }
-      }
-    }
     resourcesInEnvironment.push(rootResourceGroupInfra);
 
     await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,

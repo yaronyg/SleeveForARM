@@ -17,19 +17,22 @@ describe("Web app Node Azure", () => {
 
     let testingDirFullPath: string;
     let sleeveCommandLocation: string;
+    let resourcesInEnvironment: CliUtilities.InfraResourceType[];
     beforeEach(async function() {
         [testingDirFullPath, sleeveCommandLocation] =
             await TestUtilities.setupMochaTestLogging(this);
     });
 
-    afterEach(function() {
-        TestUtilities.tearDownMochaTestLogging();
+    afterEach(async function() {
+        await TestUtilities.tearDownMochaTestLogging(resourcesInEnvironment,
+            testingDirFullPath, this);
     });
 
     it("should be deployable", async function() {
         const deploymentType = Resource.DeployType.Production;
         this.timeout(15 * 60 * 1000);
-        const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
+        const webAppSamplePath = Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
         await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
@@ -65,9 +68,9 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
-        const resourcesInEnvironment =
+        resourcesInEnvironment =
          await CliUtilities.deployResources(webAppSamplePath, deploymentType,
-                                           true, true);
+                                           true);
 
         const webApp = resourcesInEnvironment.find((resource) =>
             CommonUtilities.isClass(resource,
@@ -83,11 +86,12 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         await getTheResult(deployedURL);
     });
 
-    async function waitAndTryAgain(url: string, resolve: () => void,
+    async function waitAndTryAgain(url: string, httpGetResult: string,
+                                   resolve: () => void,
                                    reject: (err: any) => void) {
         setTimeout(async function() {
             try {
-                await getTheResult(url);
+                await getTheResult(url, httpGetResult);
                 resolve();
             } catch (err) {
                 reject(err);
@@ -95,15 +99,17 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         }, 5000);
     }
 
-    async function getTheResult(url: string) {
+    async function getTheResult(url: string,
+                                httpGetResult: string = "") {
+        httpGetResult = httpGetResult ? httpGetResult : "A Name";
         return new Promise(async function(resolve, reject) {
             try {
                 const getResult = await Request.get(url);
                 if (getResult === "Not Set!") {
-                    waitAndTryAgain(url, resolve, reject);
+                    waitAndTryAgain(url, httpGetResult, resolve, reject);
                 } else {
                     try {
-                        expect(getResult).equals("A Name");
+                        expect(getResult).equals(httpGetResult);
                         resolve();
                     } catch (err) {
                         reject(err);
@@ -115,7 +121,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                 // the test itself times out.
                 if (err.error.errno === "ECONNREFUSED") {
                     // We made the request too quickly
-                    waitAndTryAgain(url, resolve, reject);
+                    waitAndTryAgain(url, httpGetResult, resolve, reject);
                     return;
                 }
                 throw err;
@@ -126,19 +132,22 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
     it("should run locally", async function() {
         const deploymentType = Resource.DeployType.LocalDevelopment;
         this.timeout(10 * 60 * 1000);
-        const webAppSamplePath = Path.join(testingDirFullPath, "webApp");
+        const webAppSamplePath = Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
         await fs.emptyDir(webAppSamplePath);
         await CommonUtilities.exec(`${sleeveCommandLocation} init`,
             webAppSamplePath);
-        // tslint:disable-next-line:max-line-length
-        await CommonUtilities.exec(`${sleeveCommandLocation} setup -t webapp-node -n foo`,
+        // await CliUtilities.init(webAppSamplePath);
+        await CommonUtilities.exec(
+`${sleeveCommandLocation} setup -t webapp-node -n foo`,
             webAppSamplePath);
 
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
-        await CliUtilities.deployResources(webAppSamplePath, deploymentType,
-                                            false, true);
+        resourcesInEnvironment =
+            await CliUtilities.deployResources(webAppSamplePath, deploymentType,
+                                            false);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
 

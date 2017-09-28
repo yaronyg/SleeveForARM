@@ -220,7 +220,7 @@ export function isClass(obj: object, classObj: any): boolean {
 }
 
 export function validateResource(resourceName: string, length: number) {
-    return ((resourceName.length < length) &&
+    return ((resourceName.length <= length) &&
             (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourceName)));
 }
 

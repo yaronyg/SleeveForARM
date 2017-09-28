@@ -2,6 +2,7 @@ import { expect } from "chai";
 import "mocha";
 import * as Path from "path";
 import * as ReplaceInFile from "replace-in-file";
+import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
 import * as Resource from "../src/resource";
 import ResourceGroup from "../src/resourcegroup";
@@ -16,18 +17,23 @@ describe("Resource group", () => {
     });
 
     let testingDirFullPath: string;
+    const resourcesInEnvironment: CliUtilities.InfraResourceType[] = [];
     beforeEach(async function() {
         [ testingDirFullPath ] =
             await TestUtilities.setupMochaTestLogging(this);
     });
 
-    afterEach(() => {
-        TestUtilities.tearDownMochaTestLogging();
+    afterEach(async function() {
+        await TestUtilities.tearDownMochaTestLogging(
+            resourcesInEnvironment,
+            testingDirFullPath,
+            this);
     });
 
     it("should create a resource group", async () => {
         const resourceGroupPath =
-            Path.join(testingDirFullPath, "rg");
+            Path.join(testingDirFullPath,
+            TestUtilities.generateRandomTestGroupName());
         const resourceGroupInfra =
             new ResourceGroupInfrastructure.ResourceGroupInfrastructure();
         resourceGroupInfra.initialize(null, resourceGroupPath);
@@ -48,6 +54,7 @@ describe("Resource group", () => {
 
         const secondResourceGroupInfra =
             new ResourceGroupInfrastructure.ResourceGroupInfrastructure();
+        resourcesInEnvironment.push(secondResourceGroupInfra);
         secondResourceGroupInfra.initialize(resourceGroup, resourceGroupPath);
         await secondResourceGroupInfra.hydrate([],
             Resource.DeployType.Production);
