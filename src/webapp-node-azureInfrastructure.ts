@@ -1,6 +1,7 @@
 import * as FS from "fs-extra";
 import * as Path from "path";
-import * as Util from "util";
+// tslint:disable-next-line:max-line-length
+import * as ApplicationInsightsInfrastructure from "./applicationInsightsInfrastructure";
 import BaseDeployStorageResource from "./BaseDeployStorageResource";
 import * as CommonUtilities from "./common-utilities";
 import * as data from "./data";
@@ -8,7 +9,7 @@ import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
-import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
+import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
 
 interface IPublishingProfile {
@@ -46,7 +47,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async setup(): Promise<void> {
        return await WebappNodeAzure.internalSetup(__filename,
-                this.targetDirectoryPath, (data.data as any).WebAppNameLength);
+                this.targetDirectoryPath, data.data.WebAppNameLength);
     }
 
     public async hydrate(resourcesInEnvironment: Resource.Resource[],
@@ -69,6 +70,12 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
     public async deployResource(developmentDeploy = false): Promise<this> {
         await this.resourceGroup.getBaseDeployClassInstance();
+        const aiResource = CommonUtilities.findGlobalDefaultResourceByType(
+            this.resourcesInEnvironment,
+            ApplicationInsightsInfrastructure
+                // tslint:disable-next-line:max-line-length
+                .ApplicationInsightsInfrastructure) as ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure;
+        const aiKeyID = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
         const storageResources =
             CommonUtilities.findInfraResourcesByInterface<IStorageResource>(
                 this.resourcesInEnvironment,
@@ -82,8 +89,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await (this.deploymentType === Resource.DeployType.Production ?
             this.deployToProduction(developmentDeploy,
-                storagePromisesToWaitFor) :
-            this.deployToDev(storagePromisesToWaitFor));
+                storagePromisesToWaitFor, aiKeyID) :
+            this.deployToDev(storagePromisesToWaitFor, aiKeyID));
 
         this.promiseGate
             .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
@@ -104,7 +111,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     }
 
     private async deployToDev(storagePromisesToWaitFor
-            : Array<Promise<BaseDeployStorageResource>>) {
+            : Array<Promise<BaseDeployStorageResource>>,
+                              aiKey: string) {
         const baseStorageResources: BaseDeployStorageResource[] =
              await Promise.all(storagePromisesToWaitFor);
 
@@ -115,13 +123,16 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                  ...baseStorageResource.getEnvironmentVariables()];
         }
 
+        environmentVariablesArray.push(
+            [ServiceEnvironmentUtilities.aiEnvironmentVariableName, aiKey]);
+
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
         await FS.ensureDir(sleevePath);
         const variablePath =
             Path.join(CommonUtilities
                         .localScratchDirectory(this.targetDirectoryPath),
-                      ServiceEnvironment.environmentFileName);
+                      ServiceEnvironmentUtilities.environmentFileName);
         FS.removeSync(variablePath);
         for (const nameValuePair of environmentVariablesArray) {
             FS.appendFileSync(variablePath,
@@ -132,7 +143,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     private async deployToProduction(
         developmentDeploy: boolean,
         storagePromisesToWaitFor
-            : Array<Promise<BaseDeployStorageResource>>) {
+            : Array<Promise<BaseDeployStorageResource>>,
+        aiKeyId: string) {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const webPromise =
             CommonUtilities.runAzCommand(
@@ -174,6 +186,9 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             environmentalVariables += `${variablePair[0]}=${variablePair[1]} `;
         }
 
+        environmentalVariables +=
+`${ServiceEnvironmentUtilities.aiEnvironmentVariableName}=${aiKeyId}`;
+
         if (environmentalVariables !== "") {
             secondStepPromises.push(CommonUtilities.runAzCommand(
 `az webapp config appsettings set \
@@ -201,7 +216,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         const profileName = this.webAppDNSName + "cdnprofile";
         const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
 
-        const cdnsettingname = ServiceEnvironment.cdnprefix + cdnsettingvalue;
+        const cdnsettingname = ServiceEnvironmentUtilities.cdnprefix + "="
+            + cdnsettingvalue;
 
         await CommonUtilities.runAzCommand(
             `az cdn profile create \
@@ -219,9 +235,9 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await CommonUtilities.runAzCommand(
             `az webapp config appsettings set \
-            --name ${this.webAppDNSName} \
-            --resource-group ${this.resourceGroup.resourceGroupName} \
-            --settings ${cdnsettingname}`);
+--name ${this.webAppDNSName} \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--settings ${cdnsettingname}`);
 
     }
 
@@ -261,9 +277,11 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await FS.emptyDir(gitCloneDepotParentPath);
 
-        await CommonUtilities.exec(
-                Util.format(`git clone ${gitURL}`),
-                    gitCloneDepotParentPath);
+        await CommonUtilities.retryAfterFailure<CommonUtilities.IExecOutput>(
+                async () => {
+            return await CommonUtilities.exec(`git clone ${gitURL}`,
+                                              gitCloneDepotParentPath);
+        }, 60);
 
         const directoryContents = await FS.readdir(gitCloneDepotPath);
 
