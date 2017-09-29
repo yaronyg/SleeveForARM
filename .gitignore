@@ -78,3 +78,7 @@ typings/
 
 # Where we create testing related temporary data
 disposableTestFiles
+.vs/sleeveforarm/v15/.suo
+.vs/ProjectSettings.json
+.vs/slnx.sqlite
+.vs/VSWorkspaceState.json

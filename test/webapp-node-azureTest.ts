@@ -99,10 +99,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         const tryCDN = deployedURL + "/trycdn";
 
         await getTheResult(deployedURL);
-        // skip the CND testing given which is not needed at the dev machine.
-        if ( webApp.isCDNEnabled()) {
-            await getTheResult(tryCDN);
-        }
+        await getTheResult(tryCDN);
     });
 
     async function waitAndTryAgain(url: string, httpGetResult: string,

@@ -42,5 +42,4 @@ export const resourceHostSuffix = "_host";
 export const resourceUserSuffix = "_user";
 export const resourcePasswordSuffix = "_password";
 export const cdnprefix = "cdnname";
-export const aiEnvironmentVariableName =
-    "APPINSIGHTS_INSTRUMENTATIONKEY";
+export const aiEnvironmentVariableName = "APPINSIGHTS_INSTRUMENTATIONKEY";

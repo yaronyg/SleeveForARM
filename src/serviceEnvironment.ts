@@ -3,10 +3,6 @@ import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 
 ServiceEnvironmentUtilities.setProcessEnv();
 
-export function getApplicationInsightsInstrumentationKey() {
-    return process.env[ServiceEnvironmentUtilities.aiEnvironmentVariableName];
-}
-
 export function getMySqlConnectionObject(mySqlServerName: string,
                                          database?: string)
                                          : MySql2.ConnectionOptions {
@@ -38,5 +34,11 @@ export function getMySqlConnectionObject(mySqlServerName: string,
 }
 
 export function getCDNEndpoint() {
-    return process.env[ServiceEnvironmentUtilities.cdnprefix];
+    // return the localhost if CDN is not available
+    const endpoint = process.env[ServiceEnvironmentUtilities.cdnprefix];
+    if (endpoint !== undefined) {
+        return endpoint;
+    }else {
+        return "127.0.0.1";
+    }
 }

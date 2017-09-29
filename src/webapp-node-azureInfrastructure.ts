@@ -106,10 +106,6 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             });
     }
 
-    public isCDNEnabled(): boolean {
-        return this.DefaultCDNSKU !== undefined;
-    }
-
     private async deployToDev(storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>,
                               aiKey: string) {
@@ -206,12 +202,15 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await this.deployToWebApp(developmentDeploy);
 
+        const promiseArrary = [];
+        promiseArrary.push(webPromise);
         if (this.DefaultCDNSKU !== undefined) {
-            await this.enableCDN(webAppCreateResult);
+            // tslint:disable-next-line:max-line-length
+            promiseArrary.push(this.enableCDN(webAppCreateResult));
         }
-
+        await Promise.all(promiseArrary);
     }
-    private async enableCDN(webAppCreateResult: any ) {
+    private async enableCDN(webAppCreateResult: any) {
 
         const profileName = this.webAppDNSName + "cdnprofile";
         const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
