@@ -199,6 +199,8 @@ export async function retryAfterFailure<T>(command: () => Promise<T>,
         if (counter === 0) {
             throw err;
         }
+        Winston.debug(`In retryAfterFailure with command ${command} at counter \
+${counter} and got error ${err}`);
         await wait(1000);
         return await retryAfterFailure(command, --counter);
     }
@@ -218,7 +220,7 @@ export function isClass(obj: object, classObj: any): boolean {
 }
 
 export function validateResource(resourceName: string, length: number) {
-    return ((resourceName.length < length) &&
+    return ((resourceName.length <= length) &&
             (RegExp("^[a-zA-Z][a-zA-Z0-9]+$").test(resourceName)));
 }
 

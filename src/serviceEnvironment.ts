@@ -3,6 +3,10 @@ import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 
 ServiceEnvironmentUtilities.setProcessEnv();
 
+export function getApplicationInsightsInstrumentationKey() {
+    return process.env[ServiceEnvironmentUtilities.aiEnvironmentVariableName];
+}
+
 export function getMySqlConnectionObject(mySqlServerName: string,
                                          database?: string)
                                          : MySql2.ConnectionOptions {
