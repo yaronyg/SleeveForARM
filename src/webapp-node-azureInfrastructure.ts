@@ -155,6 +155,14 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 --plan ${this.webAppServicePlanName}`, CommonUtilities.azCommandOutputs.json);
         });
 
+        const promiseArrary = [];
+        promiseArrary.push(webPromise);
+        if (this.DefaultCDNSKU !== undefined) {
+            // tslint:disable-next-line:max-line-length
+            promiseArrary.push(this.enableCDN(webPromise));
+        }
+        await Promise.all(promiseArrary);
+
         const webAppCreateResult = await webPromise;
         const baseStorageResources: BaseDeployStorageResource[]
             = await Promise.all(storagePromisesToWaitFor);
@@ -202,16 +210,9 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await this.deployToWebApp(developmentDeploy);
 
-        const promiseArrary = [];
-        promiseArrary.push(webPromise);
-        if (this.DefaultCDNSKU !== undefined) {
-            // tslint:disable-next-line:max-line-length
-            promiseArrary.push(this.enableCDN(webAppCreateResult));
-        }
-        await Promise.all(promiseArrary);
     }
-    private async enableCDN(webAppCreateResult: any) {
-
+    private async enableCDN(webPromise: any) {
+        const webAppCreateResult = await webPromise;
         const profileName = this.webAppDNSName + "cdnprofile";
         const cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
 

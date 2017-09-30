@@ -14,4 +14,7 @@ export default class WebappNodeAzure extends ResourceNotResourceGroup {
         this.DefaultCDNSKU = setting;
         return this;
     }
+    public  getCDNProvider() {
+        return this.DefaultCDNSKU;
+    }
 }
