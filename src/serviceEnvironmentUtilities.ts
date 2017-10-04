@@ -38,8 +38,14 @@ export function setProcessEnv() {
     }
 }
 
+export function dismissCDNOption() {
+    cdnprefix = "NO_CDN_SET";
+}
+
 export const resourceHostSuffix = "_host";
 export const resourceUserSuffix = "_user";
 export const resourcePasswordSuffix = "_password";
-export const cdnprefix = "cdnname";
+
+// tslint:disable-next-line:align
+export let cdnprefix = "cdnname";
 export const aiEnvironmentVariableName = "APPINSIGHTS_INSTRUMENTATIONKEY";

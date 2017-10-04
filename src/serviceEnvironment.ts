@@ -34,11 +34,17 @@ export function getMySqlConnectionObject(mySqlServerName: string,
 }
 
 export function getCDNEndpoint() {
-    // return the localhost if CDN is not available
-    const endpoint = process.env[ServiceEnvironmentUtilities.cdnprefix];
-    if (endpoint !== undefined) {
-        return endpoint;
+    if (ServiceEnvironmentUtilities.cdnprefix === "NO_CDN_SET") {
+        throw new Error(
+            `CDN endpoint is not avaialble without proper setup`);
+            // why do you even call this method without set up the CDN?
     }else {
-        return "127.0.0.1";
+        const endpoint = process.env[ServiceEnvironmentUtilities.cdnprefix];
+        if (endpoint !== undefined) {
+            return endpoint;
+        }else {
+            // tslint:disable-next-line:max-line-length
+            return "127.0.0.1"; // very likely this path is under the local dev given the CDN is setup yet no endpoint is avaialbe from the current env property
+        }
     }
 }

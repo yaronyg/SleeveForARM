@@ -160,9 +160,10 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         if (this.DefaultCDNSKU !== undefined) {
             // tslint:disable-next-line:max-line-length
             promiseArrary.push(this.enableCDN(webPromise));
+        }else {
+            ServiceEnvironmentUtilities.dismissCDNOption();
         }
         await Promise.all(promiseArrary);
-
         const webAppCreateResult = await webPromise;
         const baseStorageResources: BaseDeployStorageResource[]
             = await Promise.all(storagePromisesToWaitFor);
