@@ -167,6 +167,17 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
 
+          // tslint:disable-next-line:max-line-length
+          // although the CDN is set for the local-test, but we are actually using the 127.0.0.1
+        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
+        const replaceInFileOptions = {
+              files: Path.join(pathTosleevejs, "sleeve.js"),
+              from: /module.exports = new webappNodeAzure\(\);/,
+              // tslint:disable-next-line:max-line-length
+              to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
+          };
+        await ReplaceInFile(replaceInFileOptions);
+
         const fooPath = Path.join(webAppSamplePath, "foo");
         await CommonUtilities.exec("npm install mysql2 --save",
             fooPath);
