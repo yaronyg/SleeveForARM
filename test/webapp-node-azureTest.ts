@@ -44,15 +44,7 @@ describe("Web app Node Azure", () => {
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         // enable the CDN
-        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
-        const replaceInFileOptions = {
-            files: Path.join(pathTosleevejs, "sleeve.js"),
-            from: /module.exports = new webappNodeAzure\(\);/,
-            // tslint:disable-next-line:max-line-length
-            to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
-        };
-
-        await ReplaceInFile(replaceInFileOptions);
+        await updateSleeveJSforCDN(webAppSamplePath);
 
         // Set up our test
         const fooPath = Path.join(webAppSamplePath, "foo");
@@ -115,6 +107,17 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         }, 5000);
     }
 
+    async function updateSleeveJSforCDN(webAppSamplePath: string) {
+        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
+        const replaceInFileOptions = {
+              files: Path.join(pathTosleevejs, "sleeve.js"),
+              from: /module.exports = new webappNodeAzure\(\);/,
+              // tslint:disable-next-line:max-line-length
+              to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
+          };
+        await ReplaceInFile(replaceInFileOptions);
+    }
+
     async function getTheResult(url: string,
                                 httpGetResult: string = "") {
         httpGetResult = httpGetResult ? httpGetResult : "A Name";
@@ -169,14 +172,7 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
           // tslint:disable-next-line:max-line-length
           // although the CDN is set for the local-test, but we are actually using the 127.0.0.1
-        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
-        const replaceInFileOptions = {
-              files: Path.join(pathTosleevejs, "sleeve.js"),
-              from: /module.exports = new webappNodeAzure\(\);/,
-              // tslint:disable-next-line:max-line-length
-              to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
-          };
-        await ReplaceInFile(replaceInFileOptions);
+        await updateSleeveJSforCDN(webAppSamplePath);
 
         const fooPath = Path.join(webAppSamplePath, "foo");
         await CommonUtilities.exec("npm install mysql2 --save",
@@ -200,5 +196,6 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         CommonUtilities.exec("node index.js", fooPath);
         await getTheResult("http://localhost:1337");
+        await getTheResult("http://localhost:1337/trycdn");
     });
 });
