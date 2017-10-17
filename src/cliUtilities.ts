@@ -131,6 +131,40 @@ export async function setup(currentWorkingDirectory: string,
     return targetPath;
 }
 
+async function hydrateEnvironment(currentWorkingDirectory: string,
+                                  deploymentType: Resource.DeployType):
+  Promise<InfraResourceType[]> {
+  const resourcesInEnvironment: InfraResourceType[] = [];
+  const rootOfDeploymentPath: string =
+    await CommonUtilities.findGitRootDir(currentWorkingDirectory);
+  const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
+  if (!(fs.existsSync(rootSleevePath))) {
+    // tslint:disable-next-line:no-console
+    console.log("There is no sleeve.js in the root, \
+  this is not a properly configured project");
+    process.exit(-1);
+  }
+  await CommonUtilities.npmSetup(rootOfDeploymentPath);
+  const rootResourceGroup: ResourceGroup = require(rootSleevePath);
+  // tslint:disable-next-line:max-line-length
+  const rootResourceGroupInfra =
+    createInfraResource(rootResourceGroup, rootOfDeploymentPath) as ResourceGroupInfrastructure.ResourceGroupInfrastructure;
+  await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
+      deploymentType);
+  resourcesInEnvironment.push(rootResourceGroupInfra);
+
+  await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,
+    async (candidatePath) => {
+      await CommonUtilities.npmSetup(candidatePath);
+      const sleevePath = Path.join(candidatePath, "sleeve.js");
+      const resource = require(sleevePath);
+      const infraResource = createInfraResource(resource, candidatePath);
+      resourcesInEnvironment.push(
+        await infraResource.hydrate(resourcesInEnvironment, deploymentType));
+    });
+  return resourcesInEnvironment;
+}
+
 // TODO: developmentDeploy is really just intended for Node WebAPPs so that
 // we deploy code in Azure that will properly set up the environment
 // to take a version of Sleeve from the local machine and not look to
@@ -141,35 +175,11 @@ export async function deployResources(
                           deploymentType: Resource.DeployType,
                           developmentDeploy = false)
                           : Promise<InfraResourceType[]> {
-    const resourcesInEnvironment: InfraResourceType[] = [];
-    const rootOfDeploymentPath: string =
-      await CommonUtilities.findGitRootDir(currentWorkingDirectory);
-    const rootSleevePath = Path.join(rootOfDeploymentPath, "sleeve.js");
-    if (!(fs.existsSync(rootSleevePath))) {
-      console.log("There is no sleeve.js in the root, \
-this is not a properly configured project");
-      process.exit(-1);
-    }
-    await CommonUtilities.npmSetup(rootOfDeploymentPath);
-    const rootResourceGroup: ResourceGroup = require(rootSleevePath);
-    const rootResourceGroupInfra =
-      // tslint:disable-next-line:max-line-length
-      createInfraResource(rootResourceGroup, rootOfDeploymentPath) as ResourceGroupInfrastructure.ResourceGroupInfrastructure;
-    await rootResourceGroupInfra.hydrate(resourcesInEnvironment,
-                                         deploymentType);
-    resourcesInEnvironment.push(rootResourceGroupInfra);
-
-    await CommonUtilities.executeOnSleeveResources(rootOfDeploymentPath,
-      async (candidatePath) => {
-        await CommonUtilities.npmSetup(candidatePath);
-        const sleevePath = Path.join(candidatePath, "sleeve.js");
-        const resource = require(sleevePath);
-        const infraResource = createInfraResource(resource, candidatePath);
-        resourcesInEnvironment.push(
-          await infraResource.hydrate(resourcesInEnvironment, deploymentType));
-      });
+    const resourcesInEnvironment: InfraResourceType[] =
+      await hydrateEnvironment(currentWorkingDirectory, deploymentType);
 
     if (resourcesInEnvironment.length === 0) {
+      // tslint:disable-next-line:no-console
       console.log("There are no resources to deploy");
       process.exit(-1);
     }
@@ -196,6 +206,80 @@ ${await baseDeployWebApp.getDeployedURL()}`);
       }
     }
     return resourcesInEnvironment;
+}
+
+function getAppInsightsURL(aiName: string, resourceGroupName: string):
+    Promise<string> {
+  return CommonUtilities.runAzCommand(`az resource show --name ${aiName} \
+--resource-group ${resourceGroupName} \
+--resource-type Microsoft.Insights/components`)
+  .then((result) => {
+    if (result && result.properties) {
+      return `https://ms.portal.azure.com/#resource/subscriptions/\
+${result.properties.TenantId}/resourceGroups/${resourceGroupName}\
+/providers/Microsoft.Insights/components/${aiName}/overview`;
+    }
+    return "";
+  });
+}
+
+async function createEnvironmentToGetAiLocation(
+    currentWorkingDirectory: string,
+    deploymentType: Resource.DeployType):
+      Promise<string> {
+  const resourcesInEnvironment: InfraResourceType[] =
+  await hydrateEnvironment(currentWorkingDirectory,
+                            deploymentType);
+  const rootResourceGroupInfra =
+    CommonUtilities
+      .findGlobalDefaultResourceByType(resourcesInEnvironment,
+        // tslint:disable-next-line:max-line-length
+        ResourceGroupInfrastructure.ResourceGroupInfrastructure) as ResourceGroupInfrastructure.ResourceGroupInfrastructure;
+
+  const rootAiInfra =
+    CommonUtilities
+      .findGlobalDefaultResourceByType(resourcesInEnvironment,
+        // tslint:disable-next-line:max-line-length
+        ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure) as ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure;
+
+  return getAppInsightsURL(rootAiInfra.appInsightsFullName,
+      rootResourceGroupInfra.resourceGroupName);
+}
+
+export async function getManageResourceData(currentWorkingDirectory: string):
+    Promise<{[deploymentType: string]: string}> {
+  const results: {[deploymentType: string]: string} = {};
+
+  results[Resource.DeployType.LocalDevelopment] =
+      await createEnvironmentToGetAiLocation(currentWorkingDirectory,
+        Resource.DeployType.LocalDevelopment);
+
+  results[Resource.DeployType.Production] =
+        await createEnvironmentToGetAiLocation(currentWorkingDirectory,
+          Resource.DeployType.Production);
+
+  return results;
+}
+
+function printManageResults(deployType: Resource.DeployType,
+                            deployResult: string) {
+  const printPrefix = `${deployType} deployment:`;
+  if (deployResult === "") {
+    console.log(`${printPrefix} NO DEPLOYMENT`);
+    return;
+  }
+  console.log(`${printPrefix} ${deployResult}`);
+}
+
+export async function manageResource(currentWorkingDirectory: string) {
+  const manageResults = await getManageResourceData(currentWorkingDirectory);
+  const devDeployResults =
+    manageResults[Resource.DeployType.LocalDevelopment];
+  const productionDeployResults =
+    manageResults[Resource.DeployType.Production];
+
+  printManageResults(Resource.DeployType.LocalDevelopment, devDeployResults);
+  printManageResults(Resource.DeployType.Production, productionDeployResults);
 }
 
 export function setLoggingIfNeeded(argv: any) {

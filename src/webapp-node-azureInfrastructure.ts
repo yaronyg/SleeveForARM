@@ -75,7 +75,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             ApplicationInsightsInfrastructure
                 // tslint:disable-next-line:max-line-length
                 .ApplicationInsightsInfrastructure) as ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure;
-        const aiKeyIDPromise = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
+        const aiKeyID = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
         const storageResources =
             CommonUtilities.findInfraResourcesByInterface<IStorageResource>(
                 this.resourcesInEnvironment,
@@ -89,8 +89,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await (this.deploymentType === Resource.DeployType.Production ?
             this.deployToProduction(developmentDeploy,
-                storagePromisesToWaitFor, aiKeyIDPromise) :
-            this.deployToDev(storagePromisesToWaitFor, aiKeyIDPromise));
+                storagePromisesToWaitFor, aiKeyID) :
+            this.deployToDev(storagePromisesToWaitFor, aiKeyID));
 
         this.promiseGate
             .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
@@ -107,7 +107,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
     }
     private async deployToDev(storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>,
-                              aiKeyIDPromise: Promise<string>) {
+                              aiKeyId: string) {
         const baseStorageResources: BaseDeployStorageResource[] =
              await Promise.all(storagePromisesToWaitFor);
 
@@ -118,9 +118,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                  ...baseStorageResource.getEnvironmentVariables()];
         }
 
-        const aiKey = await aiKeyIDPromise;
         environmentVariablesArray.push(
-            [ServiceEnvironment.aiEnvironmentVariableName, aiKey]);
+            [ServiceEnvironment.aiEnvironmentVariableName, aiKeyId]);
 
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
@@ -140,7 +139,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         developmentDeploy: boolean,
         storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>,
-        aiKeyIDPromise: Promise<string>) {
+        aiKeyId: string) {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const webPromise =
             CommonUtilities.runAzCommand(
@@ -182,7 +181,6 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             environmentalVariables += `${variablePair[0]}=${variablePair[1]} `;
         }
 
-        const aiKeyId = await aiKeyIDPromise;
         environmentalVariables +=
 `${ServiceEnvironment.aiEnvironmentVariableName}=${aiKeyId}`;
 

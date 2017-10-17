@@ -24,6 +24,7 @@ Once everything is installed __Please make sure to open a command line and run "
 * `sleeve deploy` - Tells sleeve to deploy the resources in the project. The current choices are dev or prod. 
    * Dev is intended to support developing on the local machine. But certain kinds of resources are best deployed in Azure even when developing locally. For example, if you are building a web app that uses Azure mySQL it's better to develop against an instance of Azure mySQL deployed in Azure than try to set up a local mySQL and hope its configuration and behavior matches Azure. So `sleeve deploy -t dev` creates resources like Azure mySQL that should be put into SQL and also sets up the local environment so that it will connect to the Azure mySQL instance using the bridging libraries (see below).
    * Prod is intended for a straight forward production deployment where we just create the resources in Azure.
+* `sleeve manage` - Lists all the deployed environments for the current project (e.g. dev and prod) and their application insights URLs.
 
 # Sleeve Bridge Libraries
 When we create a compute based resource we put in sample code. Inside of the sample code will be a connection to a bridge library. For example, in node we call this library ServiceEnvironment and it supports a call `getMySqlConnectionObject` that lets you specify the name of a mySQL resource in the project and it will return a mysql2 connection object to get to that resource. We will be extending these libraries in the future to support other functionality such as connecting logs to Azure Log Analytics and supporting other resource types like connecting to other web apps or storage services like Cosmos DB or caches like Azure Redis.
@@ -84,13 +85,31 @@ Now head back to VS Code and open webApp/index.js. This is a default file we put
 Now please replace the contents of webApp/index.js with the code given below.
 
 ```javascript
-	var http = require('http');
 	var ServiceEnvironment = require("sleeveforarm/src/serviceEnvironment");
+	var appInsights = require("applicationinsights");
+	appInsights
+		.setup()
+		.setAutoDependencyCorrelation(true)
+		.setAutoCollectRequests(true)
+		.setAutoCollectPerformance(true)
+		.setAutoCollectExceptions(true)
+		.setAutoCollectDependencies(true)
+		.setAutoCollectConsole(true)
+		.start();
+	
+	// appInsights will monkeypatch Winston and setAutoCollectConsole
+	// will cause winston logging events to be sent to Application Insights
+	var winston = require("winston");
+
+	var http = require('http');
 	var MySql2 = require("mysql2/promise");
 
 	var connectionObject = ServiceEnvironment.getMySqlConnectionObject("data", "foo");
 
 	var server = http.createServer(function(request, response) {
+		// Enables tracking the results of the requests in Application Insights
+	    appInsights.defaultClient.trackRequest({request: request, response: response});
+
 		MySql2.createConnection(connectionObject)
 		.then(function (connection) {
 			return connection.query("SELECT * FROM fooers");
@@ -141,6 +160,12 @@ Now let's put everything up into Azure.
 This command will also take 4-5 minutes. But when it's done we will have a full deployment running in Azure. The last line after the command will say something like "Web app is available at http://[the name you picked]scupwebapp.azurewebsites.net". You can hit that URL to see the fully functioning service. You should see "Hello A Name" as above.
 
 So we have deployed exactly the same code in two completely different environments but everything works.
+
+Finally we can get the URLs to track the projects by running
+
+```console
+> sleeveforarm manage -v
+```
 
 # Helping to develop Sleeve
 For those interested in helping to develop Sleeve, please see [the Dev README](DEVREADME.md).

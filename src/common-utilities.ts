@@ -62,10 +62,13 @@ async function executeAzCommand(command: string, output: azCommandOutputs)
         const stdout = await runExecFailOnStderr(command, true);
         switch (output) {
             case azCommandOutputs.json: {
-                const jsonOut = JSON.parse(stdout);
+                let jsonOut = {};
+                if (stdout) {
+                    jsonOut = JSON.parse(stdout);
+                }
                 Winston.debug("Exec command %s with output %j",
                     command, jsonOut);
-                return JSON.parse(stdout);
+                return jsonOut;
             }
             case azCommandOutputs.string: {
                 Winston.debug("Exec command %s with output %s",
@@ -167,7 +170,8 @@ export function findInfraResourcesByInterface<T>(
     interfaceCheck: (object: any) => object is T)
         : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> {
     const passingResource
-    : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> = [];
+        : Array<Resource.Resource & IInfrastructure.IInfrastructure<any> & T> =
+            [];
     for (const resource of resources) {
         if (interfaceCheck(resource) && isResource(resource)
             && isIInfrastructure(resource)) {

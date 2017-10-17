@@ -2,7 +2,7 @@ var ServiceEnvironment = require("sleeveforarm/src/serviceEnvironment");
 var appInsights = require("applicationinsights");
 appInsights
     .setup()
-    .setAutoDependencyCorrelation(false)
+    .setAutoDependencyCorrelation(true)
     .setAutoCollectRequests(true)
     .setAutoCollectPerformance(true)
     .setAutoCollectExceptions(true)
