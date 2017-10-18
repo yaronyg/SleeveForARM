@@ -84,6 +84,11 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         const deployedURL = await baseDeployWebApp.getDeployedURL();
         await getTheResult(deployedURL);
+
+        const manageData =
+            await CliUtilities.getManageResourceData(webAppSamplePath);
+        expect(await manageData[Resource.DeployType.Production]).to.have
+            .string("https://ms.portal.azure.com/#resource/subscriptions/");
     });
 
     async function waitAndTryAgain(url: string, httpGetResult: string,
@@ -173,5 +178,10 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         CommonUtilities.exec("node index.js", fooPath);
         await getTheResult("http://localhost:1337");
+
+        const manageData =
+            await CliUtilities.getManageResourceData(webAppSamplePath);
+        expect(manageData[Resource.DeployType.LocalDevelopment]).to.have
+            .string("https://ms.portal.azure.com/#resource/subscriptions/");
     });
 });

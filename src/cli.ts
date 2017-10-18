@@ -58,6 +58,15 @@ deploy to Azure production"
       describe: "Outputs logs to file and screen"
     })
   .command(
+    "manage",
+    "Manage resources in deployed environments",
+    {},
+    async function(argv) {
+      CliUtilities.setLoggingIfNeeded(argv);
+      await CliUtilities.manageResource(process.cwd());
+    }
+  )
+  .command(
     "*",
     "",
     {},

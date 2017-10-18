@@ -13,7 +13,7 @@ export class BaseDeployApplicationInsightsInfrastructure {
     }
 }
 
-export class ApplicationInsightsInfrastructure extends ApplicationInsights 
+export class ApplicationInsightsInfrastructure extends ApplicationInsights
     // tslint:disable-next-line:max-line-length
     implements IInfrastructure.IInfrastructure<BaseDeployApplicationInsightsInfrastructure> {
 

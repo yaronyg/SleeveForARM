@@ -205,20 +205,26 @@ KeyVaultInfra.KeyVaultInfrastructure) as KeyVaultInfra.KeyVaultInfrastructure;
             return Promise.resolve();
         }
 
+        // We add in the '-e "SHOW DATABASES"' command just to give the
+        // command something to do in the case that we already have
+        // permission. Otherwise we won't ever get the failure we are
+        // expecting.
         const initSqlCommand =
 `mysql -h ${this.mySqlAzureFullName}.mysql.database.azure.com \
 -u ${this.securityName}@${this.mySqlAzureFullName} \
--p${this.password} -v`;
+-p${this.password} -v -e "SHOW DATABASES"`;
         let devIp: string = "";
         const baseFirewallRuleName = Crypto.randomBytes(10).toString("hex");
         const re =
-            /Client with IP address (.*) is not allowed to access the server/;
+            /Client with IP address '(.*)' is not allowed to/;
         try {
             await CommonUtilities.exec(initSqlCommand,
                                         this.targetDirectoryPath);
-            Winston.debug("The request that was supposed to fail to talk to \
-    mySQl so we could find out what IP address Azure mySQL sees actually \
-    succeeded!");
+            Winston.debug("THE SYSTEM IS IN A BAD STATE. THERE IS A DANGLING \
+FIREWALL RULE THAT WAS MOST LIKELY LEFT OVER FROM A PREVIOUS FAILED DEPLOY. \
+WE DON'T AUTOMATICALLY FIX THIS YET. PLEASE SEE \
+https://github.com/yaronyg/SleeveForARM/issues/38 FOR MORE DETAILS");
+            return "";
         } catch (err) {
             const result = err.message.match(re);
             if (result.length !== 2) {
