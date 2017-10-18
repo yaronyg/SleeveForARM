@@ -37,9 +37,8 @@ export function getCDNEndpoint() {
         const endpoint = process.env[ServiceEnvironmentUtilities.cdnprefix];
         if (endpoint !== "CDN_NOT_SET") {
             return endpoint;
-        }else {
+        } else {
             throw new Error(
-                `CDN endpoint is not avaialble without proper setup`);
+                `CDN endpoint is not available without proper setup`);
         }
-    }
 }
