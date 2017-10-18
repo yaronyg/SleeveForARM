@@ -9,7 +9,7 @@ import * as IInfrastructure from "./IInfrastructure";
 import IStorageResource from "./IStorageResource";
 import PromiseGate from "./promiseGate";
 import * as Resource from "./resource";
-import * as ServiceEnvironment from "./serviceEnvironmentUtilities";
+import * as ServiceEnvironmentUtilities from "./serviceEnvironmentUtilities";
 import WebappNodeAzure from "./webapp-node-azure";
 
 interface IPublishingProfile {
@@ -75,7 +75,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             ApplicationInsightsInfrastructure
                 // tslint:disable-next-line:max-line-length
                 .ApplicationInsightsInfrastructure) as ApplicationInsightsInfrastructure.ApplicationInsightsInfrastructure;
-        const aiKeyIDPromise = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
+        const aiKeyID = (await aiResource.getBaseDeployClassInstance()).getInstrumentationKey();
         const storageResources =
             CommonUtilities.findInfraResourcesByInterface<IStorageResource>(
                 this.resourcesInEnvironment,
@@ -89,8 +89,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 
         await (this.deploymentType === Resource.DeployType.Production ?
             this.deployToProduction(developmentDeploy,
-                storagePromisesToWaitFor, aiKeyIDPromise) :
-            this.deployToDev(storagePromisesToWaitFor, aiKeyIDPromise));
+                storagePromisesToWaitFor, aiKeyID) :
+            this.deployToDev(storagePromisesToWaitFor, aiKeyID));
 
         this.promiseGate
             .openGateSuccess(new BaseDeployWebappNodeAzureInfrastructure(this));
@@ -105,9 +105,10 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                 return baseClass;
             });
     }
+
     private async deployToDev(storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>,
-                              aiKeyIDPromise: Promise<string>) {
+                              aiKey: string) {
         const baseStorageResources: BaseDeployStorageResource[] =
              await Promise.all(storagePromisesToWaitFor);
 
@@ -118,9 +119,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
                  ...baseStorageResource.getEnvironmentVariables()];
         }
 
-        const aiKey = await aiKeyIDPromise;
         environmentVariablesArray.push(
-            [ServiceEnvironment.aiEnvironmentVariableName, aiKey]);
+            [ServiceEnvironmentUtilities.aiEnvironmentVariableName, aiKey]);
 
         const sleevePath =
             CommonUtilities.localScratchDirectory(this.targetDirectoryPath);
@@ -128,7 +128,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         const variablePath =
             Path.join(CommonUtilities
                         .localScratchDirectory(this.targetDirectoryPath),
-                      ServiceEnvironment.environmentFileName);
+                      ServiceEnvironmentUtilities.environmentFileName);
         FS.removeSync(variablePath);
         for (const nameValuePair of environmentVariablesArray) {
             FS.appendFileSync(variablePath,
@@ -140,7 +140,7 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
         developmentDeploy: boolean,
         storagePromisesToWaitFor
             : Array<Promise<BaseDeployStorageResource>>,
-        aiKeyIDPromise: Promise<string>) {
+        aiKeyId: string) {
         const resourceGroupName = this.resourceGroup.resourceGroupName;
         const webPromise =
             CommonUtilities.runAzCommand(
@@ -155,6 +155,11 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 --plan ${this.webAppServicePlanName}`, CommonUtilities.azCommandOutputs.json);
         });
 
+        const promiseArrary = [];
+        promiseArrary.push(webPromise);
+        promiseArrary.push(this.setupCDN(webPromise));
+
+        await Promise.all(promiseArrary);
         const webAppCreateResult = await webPromise;
         const baseStorageResources: BaseDeployStorageResource[]
             = await Promise.all(storagePromisesToWaitFor);
@@ -182,9 +187,8 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
             environmentalVariables += `${variablePair[0]}=${variablePair[1]} `;
         }
 
-        const aiKeyId = await aiKeyIDPromise;
         environmentalVariables +=
-`${ServiceEnvironment.aiEnvironmentVariableName}=${aiKeyId}`;
+`${ServiceEnvironmentUtilities.aiEnvironmentVariableName}=${aiKeyId}`;
 
         if (environmentalVariables !== "") {
             secondStepPromises.push(CommonUtilities.runAzCommand(
@@ -202,6 +206,48 @@ export class WebappNodeAzureInfrastructure extends WebappNodeAzure
 --query url --output tsv`, CommonUtilities.azCommandOutputs.string);
 
         await this.deployToWebApp(developmentDeploy);
+
+    }
+    private async setupCDN(webPromise: any) {
+        const webAppCreateResult = await webPromise;
+        const profileName = this.webAppDNSName + "cdnprofile";
+        let cdnsettingvalue = "";
+
+        if (this.DefaultCDNSKU === undefined) {
+            cdnsettingvalue = "CDN_NOT_SET";
+        } else {
+            if (this.deploymentType === Resource.DeployType.Production) {
+                cdnsettingvalue = this.webAppDNSName + ".azureedge.net";
+           } else {
+                cdnsettingvalue = "127.0.0.1";
+           }
+        }
+        const cdnsettingname = ServiceEnvironmentUtilities.cdnprefix + "="
+            + cdnsettingvalue;
+
+        // tslint:disable-next-line:max-line-length
+        if (this.DefaultCDNSKU !== undefined && this.deploymentType === Resource.DeployType.Production ) {
+            await CommonUtilities.runAzCommand(
+                `az cdn profile create \
+                --name ${profileName} \
+                --resource-group ${this.resourceGroup.resourceGroupName} \
+                --sku ${this.DefaultCDNSKU}`);
+            await CommonUtilities.runAzCommand(
+                    `az cdn endpoint create \
+                    --name ${this.webAppDNSName} \
+                    --origin ${webAppCreateResult.defaultHostName} \
+                    --resource-group ${this.resourceGroup.resourceGroupName} \
+                    --origin-host-header ${webAppCreateResult.defaultHostName} \
+                    --profile-name ${profileName}`,
+                    CommonUtilities.azCommandOutputs.json);
+
+        }
+        await CommonUtilities.runAzCommand(
+            `az webapp config appsettings set \
+--name ${this.webAppDNSName} \
+--resource-group ${this.resourceGroup.resourceGroupName} \
+--settings ${cdnsettingname}`);
+
     }
 
     /**

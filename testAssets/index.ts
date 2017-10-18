@@ -42,8 +42,21 @@ async function setUpDb() {
 setUpDb();
 
 const server = http.createServer(function(request, response) {
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.end(responseString);
+
+    // tslint:disable-next-line:max-line-length
+    // if the conming URL contains /trycdn, which means we like to try if the CDN works. then the request
+    // will be redirect to the CDN endpoint.
+    const needReDirect = request.url.indexOf("cdn") > 0;
+
+    if (needReDirect) {
+         const urlToRedirect = ServiceEnvironment.getCDNEndpoint();
+         response.writeHead(302, {Location: urlToRedirect});
+         response.end();
+
+    }else {
+        response.writeHead(200, {"Content-Type": "text/plain"});
+        response.end(responseString);
+    }
 });
 
 const port = process.env.PORT || 1337;

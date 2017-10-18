@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as Path from "path";
+import * as ReplaceInFile from "replace-in-file";
 import * as Request from "request-promise-native";
 import * as CliUtilities from "../src/cliUtilities";
 import * as CommonUtilities from "../src/common-utilities";
@@ -42,6 +43,9 @@ describe("Web app Node Azure", () => {
         await CommonUtilities.exec(`${sleeveCommandLocation} \
 setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
+        // enable the CDN
+        await updateSleeveJSforCDN(webAppSamplePath);
+
         // Set up our test
         const fooPath = Path.join(webAppSamplePath, "foo");
         await CommonUtilities.exec("npm install mysql2 --save",
@@ -72,18 +76,22 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
          await CliUtilities.deployResources(webAppSamplePath, deploymentType,
                                            true);
 
-        const webApp = resourcesInEnvironment.find((resource) =>
+        const webApp =
+        (resourcesInEnvironment.find((resource) =>
             CommonUtilities.isClass(resource,
-                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure));
+                // tslint:disable-next-line:max-line-length
+                WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure))) as WebappNodeAzureInfrastructure.WebappNodeAzureInfrastructure;
 
         if (webApp === undefined) {
             throw new Error("We don't have a webApp in our results!");
         }
 
         const baseDeployWebApp = await webApp.getBaseDeployClassInstance();
-
         const deployedURL = await baseDeployWebApp.getDeployedURL();
+        const tryCDN = deployedURL + "/trycdn";
+
         await getTheResult(deployedURL);
+        await getTheResult(tryCDN);
     });
 
     async function waitAndTryAgain(url: string, httpGetResult: string,
@@ -97,6 +105,17 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
                 reject(err);
             }
         }, 5000);
+    }
+
+    async function updateSleeveJSforCDN(webAppSamplePath: string) {
+        const pathTosleevejs = Path.join(webAppSamplePath, "foo");
+        const replaceInFileOptions = {
+              files: Path.join(pathTosleevejs, "sleeve.js"),
+              from: /module.exports = new webappNodeAzure\(\);/,
+              // tslint:disable-next-line:max-line-length
+              to: "const option = require(\"sleeveforarm/src/webapp-node-azure\").CDNSKUOption; module.exports = new webappNodeAzure().setCDNProvider(option.Standard_Akamai);"
+          };
+        await ReplaceInFile(replaceInFileOptions);
     }
 
     async function getTheResult(url: string,
@@ -151,6 +170,10 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
         // await CommonUtilities.exec(`${sleeveCommandLocation} deploy`,
         //     webAppSamplePath);
 
+          // tslint:disable-next-line:max-line-length
+          // although the CDN is set for the local-test, but we are actually using the 127.0.0.1
+        await updateSleeveJSforCDN(webAppSamplePath);
+
         const fooPath = Path.join(webAppSamplePath, "foo");
         await CommonUtilities.exec("npm install mysql2 --save",
             fooPath);
@@ -173,5 +196,6 @@ setup -t mySqlAzure -n mySql`, webAppSamplePath);
 
         CommonUtilities.exec("node index.js", fooPath);
         await getTheResult("http://localhost:1337");
+        await getTheResult("http://localhost:1337/trycdn");
     });
 });

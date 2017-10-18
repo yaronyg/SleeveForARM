@@ -60,7 +60,7 @@ export async function init(currentWorkingDirectory: string) {
                 "cliInit");
   if (!(await CommonUtilities.validateResource(Path.basename(process.cwd()),
                               Data.data.ProjectNameLength))) {
-      throw new Error(`Project name should be less than \
+      throw new Error(`Project name should be less than or equal to \
 ${Data.data.ProjectNameLength} characters, contains only \
 alphanumeric characters and start with a letter\n`);
   }
